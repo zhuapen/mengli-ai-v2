@@ -1,0 +1,39 @@
+:root {
+  /* Font Family */
+  --ds-font-family: 'Space Grotesk', 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  /* Font Size */
+  --ds-font-size-xs: 11px;
+  --ds-font-size-sm: 12px;
+  --ds-font-size-md: 13px;
+  --ds-font-size-base: 14px;
+  --ds-font-size-lg: 15px;
+  --ds-font-size-xl: 16px;
+  --ds-font-size-2xl: 18px;
+  --ds-font-size-3xl: 20px;
+  --ds-font-size-4xl: 28px;
+  --ds-font-size-5xl: 32px;
+  --ds-font-size-6xl: 36px;
+
+  /* Font Weight */
+  --ds-font-weight-light: 300;
+  --ds-font-weight-normal: 400;
+  --ds-font-weight-medium: 500;
+  --ds-font-weight-semibold: 600;
+  --ds-font-weight-bold: 700;
+  --ds-font-weight-extrabold: 800;
+  --ds-font-weight-black: 900;
+
+  /* Line Height */
+  --ds-line-height-tight: 1.1;
+  --ds-line-height-normal: 1.6;
+  --ds-line-height-relaxed: 1.8;
+  --ds-line-height-loose: 2;
+
+  /* Letter Spacing */
+  --ds-letter-spacing-tight: -0.5px;
+  --ds-letter-spacing-normal: 0;
+  --ds-letter-spacing-wide: 1px;
+  --ds-letter-spacing-wider: 1.5px;
+  --ds-letter-spacing-widest: 3px;
+}

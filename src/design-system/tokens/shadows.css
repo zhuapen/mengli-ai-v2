@@ -1,0 +1,52 @@
+:root {
+  /* Box Shadow */
+  --ds-shadow-none: none;
+  --ds-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --ds-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --ds-shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.12);
+  --ds-shadow-xl: 0 30px 60px rgba(0, 0, 0, 0.12);
+
+  /* Transition */
+  --ds-transition-fast: 0.15s ease;
+  --ds-transition-normal: 0.2s ease;
+  --ds-transition-slow: 0.3s ease;
+  --ds-transition-slower: 0.6s ease;
+
+  /* Animation */
+  --ds-animation-page-enter: pageEnter 0.6s ease;
+  --ds-animation-slide-down: slideDown 0.8s ease;
+  --ds-animation-fade-in: fadeIn 0.8s ease;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,36 @@
+:root {
+  /* Spacing Scale */
+  --ds-space-0: 0;
+  --ds-space-1: 4px;
+  --ds-space-2: 8px;
+  --ds-space-3: 12px;
+  --ds-space-4: 16px;
+  --ds-space-5: 20px;
+  --ds-space-6: 24px;
+  --ds-space-8: 32px;
+  --ds-space-10: 40px;
+  --ds-space-12: 48px;
+  --ds-space-16: 64px;
+  --ds-space-20: 80px;
+  --ds-space-24: 96px;
+
+  /* Border Radius */
+  --ds-radius-none: 0;
+  --ds-radius-sm: 4px;
+  --ds-radius-md: 8px;
+  --ds-radius-lg: 12px;
+  --ds-radius-xl: 16px;
+  --ds-radius-2xl: 24px;
+  --ds-radius-full: 9999px;
+
+  /* Max Width */
+  --ds-max-width-content: 1400px;
+  --ds-max-width-narrow: 800px;
+
+  /* Z-Index */
+  --ds-z-dropdown: 100;
+  --ds-z-sticky: 200;
+  --ds-z-modal: 1000;
+  --ds-z-toast: 2000;
+  --ds-z-tooltip: 3000;
+}
