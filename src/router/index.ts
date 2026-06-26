@@ -60,12 +60,6 @@ const routes: RouteRecordRaw[] = [
         name: 'DataCenter',
         component: () => import('@/modules/datacenter/page.vue'),
       },
-    ],
-  },
-  {
-    path: '/auth',
-    component: () => import('@/layouts/AuthLayout.vue'),
-    children: [
       {
         path: 'login',
         name: 'Login',

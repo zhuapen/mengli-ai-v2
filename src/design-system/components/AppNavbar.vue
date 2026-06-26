@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
-import { computed } from 'vue'
+import { mockUser } from '@/mocks/user'
 
 const router = useRouter()
 const route = useRoute()
@@ -9,7 +9,7 @@ const authStore = useAuthStore()
 
 const navLinks = [
   { name: '首页', path: '/', routeName: 'Home' },
-  { name: '智能媒体库', path: '/media', routeName: 'Media' },
+  { name: '📚 媒体库', path: '/media', routeName: 'Media' },
   { name: '图片生成', path: '/image', routeName: 'Image' },
   { name: '文案撰写', path: '/copy', routeName: 'Copy' },
   { name: '公众号写稿', path: '/article', routeName: 'Article' },
@@ -30,17 +30,22 @@ const handleLogin = () => {
 const handleRegister = () => {
   router.push({ name: 'Register' })
 }
+
+const handleLogout = () => {
+  authStore.logout()
+  router.push({ name: 'Home' })
+}
 </script>
 
 <template>
-  <nav class="navbar">
-    <div class="navbar-left">
-      <router-link to="/" class="navbar-logo">
-        <img src="/logo.jpg" alt="萌力互动" class="logo-image" />
-        <span class="logo-text">萌力互动</span>
+  <nav class="nav">
+    <div class="nav-left">
+      <router-link to="/" class="nav-logo">
+        <img src="/logo.jpg" alt="萌力互动" />
+        <span class="nav-logo-text">萌力互动</span>
       </router-link>
 
-      <div class="navbar-links">
+      <div class="nav-links">
         <router-link
           v-for="link in navLinks"
           :key="link.routeName"
@@ -53,15 +58,16 @@ const handleRegister = () => {
       </div>
     </div>
 
-    <div class="navbar-right">
+    <div id="userSection">
       <template v-if="!authStore.isAuthenticated">
         <button class="btn-register" @click="handleRegister">注册</button>
         <button class="btn-login" @click="handleLogin">登录</button>
       </template>
       <template v-else>
         <div class="user-info">
-          <span class="username">用户</span>
-          <button class="btn-logout" @click="authStore.logout()">退出</button>
+          <span class="user-avatar">{{ mockUser.avatar }}</span>
+          <span class="username">{{ mockUser.username }}</span>
+          <button class="btn-logout" @click="handleLogout">退出</button>
         </div>
       </template>
     </div>
@@ -69,7 +75,7 @@ const handleRegister = () => {
 </template>
 
 <style scoped>
-.navbar {
+.nav {
   position: fixed;
   top: 0;
   left: 0;
@@ -86,13 +92,13 @@ const handleRegister = () => {
   animation: slideDown 0.8s ease;
 }
 
-.navbar-left {
+.nav-left {
   display: flex;
   align-items: center;
   gap: 48px;
 }
 
-.navbar-logo {
+.nav-logo {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -100,19 +106,19 @@ const handleRegister = () => {
   color: var(--ds-color-black);
 }
 
-.logo-image {
+.nav-logo img {
   height: 40px;
   width: auto;
   border-radius: 8px;
 }
 
-.logo-text {
+.nav-logo-text {
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.3px;
 }
 
-.navbar-links {
+.nav-links {
   display: flex;
   gap: 8px;
 }
@@ -155,7 +161,7 @@ const handleRegister = () => {
   background: var(--ds-color-gray-100);
 }
 
-.navbar-right {
+#userSection {
   margin-left: auto;
   display: flex;
   align-items: center;
@@ -174,6 +180,7 @@ const handleRegister = () => {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  font-family: var(--ds-font-family);
 }
 
 .btn-register:hover {
@@ -191,6 +198,7 @@ const handleRegister = () => {
   font-weight: 600;
   cursor: pointer;
   transition: background 0.3s;
+  font-family: var(--ds-font-family);
 }
 
 .btn-login:hover {
@@ -201,6 +209,10 @@ const handleRegister = () => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.user-avatar {
+  font-size: 24px;
 }
 
 .username {
@@ -217,6 +229,7 @@ const handleRegister = () => {
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
+  font-family: var(--ds-font-family);
 }
 
 .btn-logout:hover {

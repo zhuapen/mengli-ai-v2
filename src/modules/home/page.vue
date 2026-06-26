@@ -1,7 +1,29 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { mockCaseStudies, mockAboutItems } from '@/mocks/home'
 
 const router = useRouter()
+
+// 滚动动画
+const observer = ref<IntersectionObserver | null>(null)
+
+onMounted(() => {
+  observer.value = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible')
+        }
+      })
+    },
+    { threshold: 0.1 },
+  )
+
+  document.querySelectorAll('.fade-in, .fade-in-left, .fade-in-right').forEach((el) => {
+    observer.value?.observe(el)
+  })
+})
 
 const features = [
   {
@@ -9,18 +31,21 @@ const features = [
     title: '达人查找',
     description: 'AI 智能匹配，快速找到最适合品牌合作的达人',
     route: '/media',
+    delay: '0.6s',
   },
   {
     icon: '🎨',
     title: '图片生成',
     description: 'AI 创意生图，一键生成营销素材和宣传海报',
     route: '/image',
+    delay: '0.8s',
   },
   {
     icon: '✍️',
     title: '文案撰写',
     description: '智能文案创作，适配各平台风格的种草内容',
     route: '/copy',
+    delay: '1.0s',
   },
 ]
 
@@ -32,48 +57,58 @@ function navigateTo(path: string) {
 <template>
   <div class="home-page">
     <!-- Hero Section -->
-    <section class="hero">
-      <div class="hero-content">
-        <div class="hero-tag fade-in">Mengli Interactive</div>
-        <h1 class="hero-title fade-in" style="transition-delay: 0.2s">
+    <section class="home-hero">
+      <div class="home-content">
+        <div class="home-tag fade-in">Mengli Interactive</div>
+        <h1 class="home-title fade-in" style="transition-delay: 0.2s">
           萌力互动<br />AI创作平台
         </h1>
 
-        <div class="hero-features">
+        <div class="home-features">
           <div
-            v-for="(feature, index) in features"
+            v-for="feature in features"
             :key="feature.title"
-            class="feature-card fade-in"
-            :style="{ transitionDelay: `${0.6 + index * 0.2}s` }"
+            class="home-feature-card fade-in"
+            :style="{ transitionDelay: feature.delay }"
             @click="navigateTo(feature.route)"
           >
-            <div class="feature-icon">{{ feature.icon }}</div>
-            <div class="feature-title">{{ feature.title }}</div>
-            <div class="feature-desc">{{ feature.description }}</div>
+            <div class="home-feature-icon">{{ feature.icon }}</div>
+            <div class="home-feature-title">{{ feature.title }}</div>
+            <div class="home-feature-desc">{{ feature.description }}</div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Case Studies Section -->
-    <section class="section">
-      <h2 class="section-title fade-in">精选案例</h2>
-      <p class="section-desc fade-in">我们为品牌打造的营销奇迹</p>
+    <section class="home-section">
+      <h2 class="home-section-title fade-in">精选案例</h2>
+      <p class="home-section-desc fade-in">我们为品牌打造的营销奇迹</p>
       <div class="placeholder-grid">
-        <div class="placeholder-card fade-in-left">案例展示 1</div>
-        <div class="placeholder-card fade-in">案例展示 2</div>
-        <div class="placeholder-card fade-in-right">案例展示 3</div>
+        <div
+          v-for="(item, index) in mockCaseStudies"
+          :key="item.id"
+          class="placeholder-card"
+          :class="index === 0 ? 'fade-in-left' : index === 2 ? 'fade-in-right' : 'fade-in'"
+        >
+          {{ item.title }}
+        </div>
       </div>
     </section>
 
     <!-- About Section -->
-    <section class="section">
-      <h2 class="section-title fade-in">关于我们</h2>
-      <p class="section-desc fade-in">萌力互动 — 您的全域营销合作伙伴</p>
+    <section class="home-section">
+      <h2 class="home-section-title fade-in">关于我们</h2>
+      <p class="home-section-desc fade-in">萌力互动 — 您的全域营销合作伙伴</p>
       <div class="placeholder-grid">
-        <div class="placeholder-card fade-in-left">公司介绍</div>
-        <div class="placeholder-card fade-in">团队风采</div>
-        <div class="placeholder-card fade-in-right">合作伙伴</div>
+        <div
+          v-for="(item, index) in mockAboutItems"
+          :key="item.id"
+          class="placeholder-card"
+          :class="index === 0 ? 'fade-in-left' : index === 2 ? 'fade-in-right' : 'fade-in'"
+        >
+          {{ item.title }}
+        </div>
       </div>
     </section>
 
@@ -93,8 +128,8 @@ function navigateTo(path: string) {
   animation: pageEnter 0.6s ease;
 }
 
-/* Hero Section */
-.hero {
+/* ========== HOME HERO ========== */
+.home-hero {
   padding: 120px 48px;
   display: flex;
   align-items: center;
@@ -103,12 +138,12 @@ function navigateTo(path: string) {
   background: linear-gradient(135deg, var(--ds-color-gray-50) 0%, var(--ds-color-white) 100%);
 }
 
-.hero-content {
+.home-content {
   max-width: 1200px;
   text-align: center;
 }
 
-.hero-tag {
+.home-tag {
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 3px;
@@ -117,7 +152,7 @@ function navigateTo(path: string) {
   margin-bottom: 24px;
 }
 
-.hero-title {
+.home-title {
   font-size: clamp(48px, 6vw, 80px);
   font-weight: 900;
   line-height: 1.1;
@@ -129,30 +164,30 @@ function navigateTo(path: string) {
   background-clip: text;
 }
 
-.hero-features {
+.home-features {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 32px;
   margin-top: 80px;
 }
 
-.feature-card {
+.home-feature-card {
   position: relative;
   padding: 40px;
   background: var(--ds-color-white);
   border: 1px solid var(--ds-color-gray-100);
   text-align: left;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.feature-card:hover {
+.home-feature-card:hover {
   transform: translateY(-8px);
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
   border-color: var(--ds-color-primary);
 }
 
-.feature-card::before {
+.home-feature-card::before {
   content: '';
   position: absolute;
   top: 0;
@@ -165,41 +200,41 @@ function navigateTo(path: string) {
   transition: transform 0.3s ease;
 }
 
-.feature-card:hover::before {
+.home-feature-card:hover::before {
   transform: scaleX(1);
 }
 
-.feature-icon {
+.home-feature-icon {
   font-size: 48px;
   margin-bottom: 24px;
 }
 
-.feature-title {
+.home-feature-title {
   font-size: 20px;
   font-weight: 700;
   margin-bottom: 12px;
 }
 
-.feature-desc {
+.home-feature-desc {
   font-size: 14px;
   color: var(--ds-color-gray-400);
   line-height: 1.8;
 }
 
-/* Sections */
-.section {
+/* ========== HOME SECTIONS ========== */
+.home-section {
   padding: 120px 48px;
   border-top: 1px solid var(--ds-color-gray-100);
 }
 
-.section-title {
+.home-section-title {
   font-size: 36px;
   font-weight: 800;
   text-align: center;
   margin-bottom: 16px;
 }
 
-.section-desc {
+.home-section-desc {
   font-size: 16px;
   color: var(--ds-color-gray-400);
   text-align: center;
@@ -233,7 +268,7 @@ function navigateTo(path: string) {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
 }
 
-/* Footer */
+/* ========== FOOTER ========== */
 .footer {
   padding: 48px;
   text-align: center;
@@ -264,11 +299,11 @@ function navigateTo(path: string) {
   color: var(--ds-color-gray-400);
 }
 
-/* Animations */
+/* ========== ANIMATIONS ========== */
 .fade-in {
   opacity: 0;
   transform: translateY(30px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fade-in.visible {
@@ -279,7 +314,7 @@ function navigateTo(path: string) {
 .fade-in-left {
   opacity: 0;
   transform: translateX(-30px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fade-in-left.visible {
@@ -290,7 +325,7 @@ function navigateTo(path: string) {
 .fade-in-right {
   opacity: 0;
   transform: translateX(30px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fade-in-right.visible {
