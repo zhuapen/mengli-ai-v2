@@ -1,85 +1,169 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import DsButton from '@/design-system/components/DsButton.vue'
+import { ref, computed } from 'vue'
 import DsLoading from '@/design-system/components/DsLoading.vue'
-import DsEmpty from '@/design-system/components/DsEmpty.vue'
 
+// 状态
+const mode = ref<'text2img' | 'img2img'>('text2img')
 const prompt = ref('')
+const img2imgPrompt = ref('')
 const size = ref('1024x1024')
 const loading = ref(false)
 const resultUrl = ref('')
 
-const sizes = ['512x512', '1024x1024', '1024x1792', '1792x1024']
+// 尺寸选项
+const sizes = [
+  { value: '1024x1024', label: '1:1 方形' },
+  { value: '1792x1024', label: '16:9 横版' },
+  { value: '1024x1792', label: '9:16 竖版' },
+  { value: '1365x1024', label: '4:3 横版' },
+  { value: '1024x1365', label: '3:4 竖版' },
+]
 
+// 生成图片
 async function handleGenerate() {
-  if (!prompt.value.trim()) return
+  const currentPrompt = mode.value === 'text2img' ? prompt.value : img2imgPrompt.value
+  if (!currentPrompt.trim()) return
 
   loading.value = true
-  // TODO: 调用 imageService.generate
-  setTimeout(() => {
-    resultUrl.value = 'https://via.placeholder.com/1024'
-    loading.value = false
-  }, 2000)
+  resultUrl.value = ''
+
+  // Mock 生成
+  await new Promise((resolve) => setTimeout(resolve, 2000))
+
+  // 使用占位图
+  resultUrl.value = `https://via.placeholder.com/${size.value.replace('x', 'x')}`
+  loading.value = false
 }
+
+// 下载图片
+function handleDownload() {
+  if (!resultUrl.value) return
+  const link = document.createElement('a')
+  link.href = resultUrl.value
+  link.download = `mengli-ai-${Date.now()}.png`
+  link.click()
+}
+
+// 重新生成
+function handleRetry() {
+  handleGenerate()
+}
+
+// 当前提示词
+const currentPrompt = computed(() => mode.value === 'text2img' ? prompt.value : img2imgPrompt.value)
 </script>
 
 <template>
   <div class="image-page">
-    <div class="image-layout">
-      <!-- 左侧：输入区 -->
-      <div class="image-left">
-        <h2 class="image-title">AI 图片生成</h2>
-        <p class="image-desc">输入描述，AI 为您生成创意图片</p>
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-header-inner">
+        <div>
+          <h1 class="page-title">图片生成</h1>
+          <p class="page-desc">AI 创意生图，一键生成营销素材</p>
+        </div>
+      </div>
+    </div>
 
-        <div class="form-group">
-          <label class="form-label">图片描述</label>
+    <div class="gen-layout">
+      <!-- 左侧：输入区 -->
+      <div class="gen-left">
+        <div class="gen-label">生成模式</div>
+        <div class="gen-mode-tabs">
+          <button
+            class="gen-mode-tab"
+            :class="{ active: mode === 'text2img' }"
+            @click="mode = 'text2img'"
+          >
+            文生图
+          </button>
+          <button
+            class="gen-mode-tab"
+            :class="{ active: mode === 'img2img' }"
+            @click="mode = 'img2img'"
+          >
+            图生图
+          </button>
+        </div>
+
+        <!-- 文生图 -->
+        <div v-if="mode === 'text2img'">
+          <div class="gen-label" style="margin-top: 24px">图片描述</div>
           <textarea
             v-model="prompt"
-            class="form-textarea"
-            placeholder="请描述您想要的图片..."
-            rows="4"
+            class="gen-textarea"
+            placeholder="描述你想要的图片，如：可爱的卡通小象，橙色主题，简约风格..."
           />
         </div>
 
-        <div class="form-group">
-          <label class="form-label">图片尺寸</label>
-          <div class="size-options">
-            <button
-              v-for="s in sizes"
-              :key="s"
-              class="size-btn"
-              :class="{ active: size === s }"
-              @click="size = s"
-            >
-              {{ s }}
-            </button>
+        <!-- 图生图 -->
+        <div v-else>
+          <div class="gen-label" style="margin-top: 24px">
+            参考图片
+            <span style="font-size: 11px; color: var(--ds-color-gray-400); font-weight: 400">
+              最多3张
+            </span>
           </div>
+          <div class="gen-upload">
+            <div class="gen-upload-icon">📷</div>
+            <div class="gen-upload-text">点击上传参考图片</div>
+            <div class="gen-upload-hint">支持 JPG、PNG，可多选</div>
+          </div>
+
+          <div class="gen-label" style="margin-top: 24px">修改要求</div>
+          <textarea
+            v-model="img2imgPrompt"
+            class="gen-textarea"
+            placeholder="描述你想要的修改，如：把背景改成蓝色、添加一个帽子、改成卡通风格..."
+          />
         </div>
 
-        <DsButton
-          :loading="loading"
-          :disabled="!prompt.trim()"
-          size="lg"
-          style="width: 100%"
+        <div class="gen-label" style="margin-top: 24px">图片尺寸</div>
+        <div class="gen-sizes">
+          <button
+            v-for="s in sizes"
+            :key="s.value"
+            class="gen-size-btn"
+            :class="{ active: size === s.value }"
+            @click="size = s.value"
+          >
+            {{ s.label }}
+          </button>
+        </div>
+
+        <button
+          class="gen-btn"
+          :disabled="loading || !currentPrompt.trim()"
           @click="handleGenerate"
         >
-          生成图片
-        </DsButton>
+          {{ loading ? '生成中...' : '生成图片' }}
+        </button>
       </div>
 
       <!-- 右侧：预览区 -->
-      <div class="image-right">
-        <div class="preview-header">
-          <h3 class="preview-title">预览</h3>
+      <div class="gen-right">
+        <div class="gen-preview">
+          <div class="gen-preview-title">预览</div>
+
+          <DsLoading v-if="loading" text="正在生成图片..." />
+
+          <div v-else-if="resultUrl" class="gen-result-container">
+            <img :src="resultUrl" alt="生成的图片" class="gen-result" />
+            <div class="gen-toolbar">
+              <button class="gen-toolbar-btn" @click="handleDownload">
+                📥 下载
+              </button>
+              <button class="gen-toolbar-btn" @click="handleRetry">
+                🔄 重新生成
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="gen-placeholder">
+            <div class="icon">🎨</div>
+            <p>输入描述后点击生成按钮</p>
+          </div>
         </div>
-
-        <DsLoading v-if="loading" text="正在生成图片..." />
-
-        <div v-else-if="resultUrl" class="preview-content">
-          <img :src="resultUrl" alt="生成的图片" class="preview-image" />
-        </div>
-
-        <DsEmpty v-else icon="🎨" title="等待生成" description="输入描述后点击生成按钮" />
       </div>
     </div>
   </div>
@@ -90,43 +174,57 @@ async function handleGenerate() {
   animation: pageEnter 0.6s ease;
 }
 
-.image-layout {
+/* Page Header */
+.page-header {
+  padding: 48px 48px 0;
+  border-bottom: 1px solid var(--ds-color-gray-100);
+  background: var(--ds-color-white);
+}
+
+.page-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-bottom: 24px;
+}
+
+.page-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--ds-color-black), var(--ds-color-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.page-desc {
+  font-size: 14px;
+  color: var(--ds-color-gray-400);
+  margin-top: 8px;
+}
+
+/* Layout */
+.gen-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
   max-width: 1400px;
   margin: 0 auto;
-  min-height: calc(100vh - 72px);
+  min-height: calc(100vh - 200px);
 }
 
-.image-left {
+.gen-left {
   padding: 48px;
   border-right: 1px solid var(--ds-color-gray-100);
 }
 
-.image-right {
+.gen-right {
   padding: 48px;
   display: flex;
   flex-direction: column;
 }
 
-.image-title {
-  font-size: 28px;
-  font-weight: 800;
-  margin-bottom: 8px;
-}
-
-.image-desc {
-  font-size: 14px;
-  color: var(--ds-color-gray-400);
-  margin-bottom: 32px;
-}
-
-.form-group {
-  margin-bottom: 24px;
-}
-
-.form-label {
-  display: block;
+/* Form Elements */
+.gen-label {
   font-size: 12px;
   font-weight: 700;
   color: var(--ds-color-gray-400);
@@ -135,72 +233,237 @@ async function handleGenerate() {
   margin-bottom: 12px;
 }
 
-.form-textarea {
+/* Mode Tabs */
+.gen-mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.gen-mode-tab {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid var(--ds-color-gray-200);
+  background: var(--ds-color-white);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: var(--ds-font-family);
+  text-align: center;
+}
+
+.gen-mode-tab:hover {
+  border-color: var(--ds-color-black);
+}
+
+.gen-mode-tab.active {
+  background: var(--ds-color-black);
+  color: var(--ds-color-white);
+  border-color: var(--ds-color-black);
+}
+
+/* Textarea */
+.gen-textarea {
   width: 100%;
   padding: 16px;
   border: 2px solid var(--ds-color-gray-200);
   font-size: 15px;
   font-family: var(--ds-font-family);
   outline: none;
+  min-height: 160px;
   resize: vertical;
   transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
-.form-textarea:focus {
+.gen-textarea:focus {
   border-color: var(--ds-color-primary);
   box-shadow: 0 0 0 3px rgba(244, 132, 95, 0.2);
 }
 
-.size-options {
-  display: flex;
-  gap: 8px;
+.gen-textarea::placeholder {
+  color: var(--ds-color-gray-300);
 }
 
-.size-btn {
-  flex: 1;
-  padding: 10px;
+/* Upload */
+.gen-upload {
+  padding: 40px;
+  border: 2px dashed var(--ds-color-gray-200);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.gen-upload:hover {
+  border-color: var(--ds-color-primary);
+  background: var(--ds-color-gray-50);
+}
+
+.gen-upload-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.gen-upload-text {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.gen-upload-hint {
+  font-size: 13px;
+  color: var(--ds-color-gray-400);
+}
+
+/* Size Buttons */
+.gen-sizes {
+  display: flex;
+  gap: 8px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.gen-size-btn {
+  padding: 10px 20px;
   border: 1.5px solid var(--ds-color-gray-200);
   background: var(--ds-color-white);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  font-family: var(--ds-font-family);
 }
 
-.size-btn:hover {
+.gen-size-btn:hover {
   border-color: var(--ds-color-black);
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.size-btn.active {
+.gen-size-btn.active {
   background: var(--ds-color-black);
   color: var(--ds-color-white);
   border-color: var(--ds-color-black);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.preview-header {
-  margin-bottom: 24px;
-}
-
-.preview-title {
-  font-size: 18px;
+/* Generate Button */
+.gen-btn {
+  width: 100%;
+  padding: 16px;
+  background: var(--ds-color-primary);
+  color: var(--ds-color-white);
+  border: none;
+  font-size: 15px;
   font-weight: 700;
+  cursor: pointer;
+  font-family: var(--ds-font-family);
+  transition: all 0.3s ease;
+  margin-top: 24px;
 }
 
-.preview-content {
+.gen-btn:hover {
+  background: var(--ds-color-black);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.gen-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Preview */
+.gen-preview {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   background: var(--ds-color-gray-50);
-  border-radius: 8px;
+  position: relative;
+  transition: all 0.3s ease;
+  min-height: 400px;
 }
 
-.preview-image {
+.gen-preview:hover {
+  background: var(--ds-color-gray-100);
+}
+
+.gen-preview-title {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ds-color-gray-400);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.gen-placeholder {
+  text-align: center;
+  color: var(--ds-color-gray-300);
+}
+
+.gen-placeholder .icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.gen-placeholder p {
+  font-size: 14px;
+}
+
+/* Result */
+.gen-result-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.gen-result {
   max-width: 100%;
-  max-height: 100%;
+  max-height: 500px;
   object-fit: contain;
   border-radius: 8px;
+  cursor: pointer;
+  transition: box-shadow 0.3s;
+}
+
+.gen-result:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Toolbar */
+.gen-toolbar {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.gen-toolbar-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--ds-color-gray-200);
+  border-radius: 8px;
+  background: var(--ds-color-white);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ds-font-family);
+}
+
+.gen-toolbar-btn:hover {
+  background: var(--ds-color-gray-50);
+  border-color: var(--ds-color-primary);
 }
 
 @keyframes pageEnter {
