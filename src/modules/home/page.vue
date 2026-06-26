@@ -118,7 +118,7 @@ function navigateTo(path: string) {
         <img src="/logo.jpg" alt="萌力互动" />
         <span>萌力互动</span>
       </div>
-      <div class="footer-copy">© 2024 Mengli Interactive. All rights reserved.</div>
+      <div class="footer-copy">© 2026 Mengli Interactive. All rights reserved.</div>
     </footer>
   </div>
 </template>
