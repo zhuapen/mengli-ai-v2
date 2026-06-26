@@ -34,12 +34,6 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/modules/article/page.vue'),
       },
       {
-        path: 'knowledge',
-        name: 'Knowledge',
-        component: () => import('@/modules/knowledge/page.vue'),
-        meta: { feature: 'enableKnowledge' },
-      },
-      {
         path: 'assets',
         name: 'Assets',
         component: () => import('@/modules/assets/page.vue'),

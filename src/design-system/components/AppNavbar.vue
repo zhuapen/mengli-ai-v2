@@ -13,7 +13,6 @@ const navLinks = [
   { name: '图片生成', path: '/image', routeName: 'Image' },
   { name: '文案撰写', path: '/copy', routeName: 'Copy' },
   { name: '公众号写稿', path: '/article', routeName: 'Article' },
-  { name: '品牌知识库', path: '/knowledge', routeName: 'Knowledge' },
   { name: '素材库', path: '/assets', routeName: 'Assets' },
   { name: '数据中心', path: '/datacenter', routeName: 'DataCenter' },
   { name: '历史记录', path: '/history', routeName: 'History' },

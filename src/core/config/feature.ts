@@ -13,7 +13,6 @@ export const features = {
 
   // 开发中功能
   enablePlugin: true,
-  enableKnowledge: true,
   enableAssets: true,
   enableDataCenter: true,
   enableArticle: true,
