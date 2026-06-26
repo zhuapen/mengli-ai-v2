@@ -42,6 +42,13 @@ export const useAuthStore = defineStore('auth', () => {
     logger.info('Logout successful')
   }
 
+  // Mock 登录（开发阶段使用）
+  function setMockToken(mockToken: string) {
+    token.value = mockToken
+    cache.setLocal('token', mockToken)
+    logger.info('Mock login successful')
+  }
+
   async function refreshUserToken(): Promise<boolean> {
     if (!refreshTokenValue.value) return false
 
@@ -71,5 +78,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     refreshUserToken,
+    setMockToken,
   }
 })

@@ -27,7 +27,9 @@ async function handleLogin() {
     await new Promise((resolve) => setTimeout(resolve, 800))
 
     if (username.value === 'admin' && password.value === '123456') {
-      // 模拟登录成功
+      // 模拟登录成功 - 直接设置 token（Mock 阶段）
+      authStore.setMockToken('mock-token-123456')
+
       const redirect = (route.query.redirect as string) || '/'
       router.push(redirect)
     } else {
