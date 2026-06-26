@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import DsButton from '@/design-system/components/DsButton.vue'
 import DsLoading from '@/design-system/components/DsLoading.vue'
-import DsEmpty from '@/design-system/components/DsEmpty.vue'
-import { mockCopyTemplates } from '@/mocks/copy'
 
 // 表单数据
 const copyType = ref('种草科普')

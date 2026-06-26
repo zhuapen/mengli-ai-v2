@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { mockKOLList, mockPlatforms, mockTags } from '@/mocks/media'
-import type { KOL } from '@/mocks/media'
 
 // 状态
 const currentView = ref<'home' | 'database' | 'project'>('home')

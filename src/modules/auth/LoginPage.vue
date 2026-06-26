@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
-import { mockUser } from '@/mocks/user'
 
 const router = useRouter()
 const route = useRoute()
@@ -35,7 +34,7 @@ async function handleLogin() {
     } else {
       error.value = '用户名或密码错误'
     }
-  } catch (e) {
+  } catch {
     error.value = '登录失败，请稍后重试'
   } finally {
     loading.value = false

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { mockHistory } from '@/mocks/history'
-import type { HistoryItem } from '@/mocks/history'
 
 // 状态
 const activeTab = ref<'all' | 'copy' | 'image' | 'article'>('all')

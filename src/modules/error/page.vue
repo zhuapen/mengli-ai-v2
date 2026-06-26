@@ -7,6 +7,10 @@ const router = useRouter()
 function goHome() {
   router.push({ name: 'Home' })
 }
+
+function goBack() {
+  router.back()
+}
 </script>
 
 <template>
@@ -15,7 +19,10 @@ function goHome() {
       <div class="error-code">404</div>
       <h1 class="error-title">页面未找到</h1>
       <p class="error-desc">您访问的页面不存在或已被移除</p>
-      <DsButton size="lg" @click="goHome">返回首页</DsButton>
+      <div class="error-actions">
+        <DsButton size="lg" @click="goHome">返回首页</DsButton>
+        <DsButton variant="secondary" size="lg" @click="goBack">返回上一页</DsButton>
+      </div>
     </div>
   </div>
 </template>
@@ -55,5 +62,11 @@ function goHome() {
   font-size: 16px;
   color: var(--ds-color-gray-400);
   margin-bottom: 40px;
+}
+
+.error-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
 }
 </style>
