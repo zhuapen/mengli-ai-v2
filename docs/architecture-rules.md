@@ -234,3 +234,120 @@ const result = await aiQueue.add('task-id', () => api.generate(prompt))
 - 代码全新实现，不允许复制旧代码
 - 使用 Design Token 定义颜色、字体、间距
 - 基础组件使用 `Ds` 前缀命名
+
+---
+
+## 十三、开发流程规范
+
+### 分阶段开发
+
+#### Phase 1：UI 还原（优先级 ★★★★★）
+- 先还原 UI，不接 API
+- 使用 Mock 数据（`src/mocks/`）
+- UI 与 V1 保持 95% 以上一致
+- 后端可独立开发，互不阻塞
+
+#### Phase 2：API 对接（优先级 ★★★★☆）
+- UI 稳定后再接 API
+- 逐步替换：Mock → 真实 API → 联调 → 完成
+
+#### Phase 3：优化
+- 权限、日志、缓存、队列、性能优化
+
+### Phase 检查清单
+
+每个 Phase 完成后必须执行：
+
+- [ ] `npm run lint`
+- [ ] `npm run type-check`
+- [ ] `npm run build`
+- [ ] `npm run dev`（手动测试）
+- [ ] Git Commit（规范格式）
+- [ ] 部署测试环境
+
+---
+
+## 十四、Mock 规范
+
+### Mock 优先原则
+所有页面先使用 Mock 数据，不调用真实接口。
+
+### Mock 文件位置
+```
+src/mocks/
+├── index.ts        # 统一导出
+├── home.ts         # 首页 Mock
+├── copy.ts         # 文案 Mock
+├── image.ts        # 图片 Mock
+├── media.ts        # 媒体库 Mock
+├── user.ts         # 用户 Mock
+└── history.ts      # 历史 Mock
+```
+
+### 使用方式
+```typescript
+import { mockKOLList } from '@/mocks/media'
+
+const kolList = ref(mockKOLList)
+```
+
+### 切换到真实 API
+后续只需替换数据源：
+```typescript
+// Mock 阶段
+const kolList = ref(mockKOLList)
+
+// API 阶段
+const { data: kolList } = useRequest(() => mediaApi.getList())
+```
+
+---
+
+## 十五、环境变量规范
+
+### 环境文件
+```
+.env.development    # 开发环境
+.env.staging        # 测试环境
+.env.production     # 生产环境
+.env.local          # 本地覆盖（git 忽略）
+```
+
+### 变量命名
+- 必须以 `VITE_` 开头
+- 使用 UPPER_SNAKE_CASE
+
+### 常用变量
+```bash
+VITE_API_BASE_URL=/api          # API 地址
+VITE_APP_TITLE=萌力互动          # 应用标题
+VITE_APP_ENV=development        # 环境标识
+```
+
+---
+
+## 十六、Git Commit 规范
+
+### 格式
+```
+<type>(<scope>): <subject>
+```
+
+### Type 类型
+- `feat`：新功能
+- `fix`：修复
+- `refactor`：重构
+- `style`：样式调整
+- `docs`：文档
+- `chore`：构建/工具
+
+### 示例
+```
+feat(home): 完成首页 UI 还原
+feat(copy): 完成 AI 文案页面
+fix(login): 修复登录跳转问题
+refactor(layout): 优化导航布局
+style(button): 调整按钮样式
+docs(readme): 更新项目说明
+chore(deps): 升级依赖版本
+```
