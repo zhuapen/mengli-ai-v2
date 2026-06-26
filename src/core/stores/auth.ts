@@ -42,7 +42,7 @@ export const useAuthStore = defineStore('auth', () => {
     logger.info('Logout successful')
   }
 
-  async function refreshToken(): Promise<boolean> {
+  async function refreshUserToken(): Promise<boolean> {
     if (!refreshTokenValue.value) return false
 
     try {
@@ -70,6 +70,6 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     login,
     logout,
-    refreshToken,
+    refreshUserToken,
   }
 })

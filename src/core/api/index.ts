@@ -47,7 +47,7 @@ instance.interceptors.response.use(
       originalRequest._retry = true
 
       const authStore = useAuthStore()
-      const refreshed = await authStore.refreshToken()
+      const refreshed = await authStore.refreshUserToken()
 
       if (refreshed) {
         originalRequest.headers.Authorization = `Bearer ${authStore.token}`
