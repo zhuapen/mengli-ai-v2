@@ -1,68 +1,29 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { mockKOLList, mockPlatforms, mockTags } from '@/mocks/media'
+import { ref, onMounted } from 'vue'
+import DsLoading from '@/design-system/components/DsLoading.vue'
+import DsError from '@/design-system/components/DsError.vue'
+import DsEmpty from '@/design-system/components/DsEmpty.vue'
+import { useMediaStore } from './store'
 
-// 状态
-const currentView = ref<'home' | 'database' | 'project'>('home')
-const searchQuery = ref('')
-const selectedPlatform = ref('全部')
-const selectedTags = ref<string[]>([])
+const store = useMediaStore()
 
-// 筛选后的 KOL 列表
-const filteredKOLs = computed(() => {
-  let list = [...mockKOLList]
-
-  // 平台筛选
-  if (selectedPlatform.value !== '全部') {
-    list = list.filter((kol) => kol.platform === selectedPlatform.value)
-  }
-
-  // 搜索筛选
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    list = list.filter(
-      (kol) =>
-        kol.name.toLowerCase().includes(query) ||
-        kol.tags.some((tag) => tag.includes(query)),
-    )
-  }
-
-  // 标签筛选
-  if (selectedTags.value.length > 0) {
-    list = list.filter((kol) =>
-      selectedTags.value.some((tag) => kol.tags.includes(tag)),
-    )
-  }
-
-  return list
+onMounted(() => {
+  store.init()
 })
 
-// 格式化粉丝数
+const currentView = ref<'home' | 'database' | 'project'>('home')
+
 function formatFollowers(num: number): string {
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1) + '万'
-  }
+  if (num >= 10000) return (num / 10000).toFixed(1) + '万'
   return num.toString()
 }
 
-// 互动率等级
 function getEngagementLevel(rate: number): string {
   if (rate >= 5) return 'high'
   if (rate >= 3) return 'mid'
   return 'low'
 }
 
-// 切换标签
-function toggleTag(tag: string) {
-  const index = selectedTags.value.indexOf(tag)
-  if (index === -1) {
-    selectedTags.value.push(tag)
-  } else {
-    selectedTags.value.splice(index, 1)
-  }
-}
-
-// 添加到选中列表
 const selectedKOLs = ref<string[]>([])
 function toggleSelectKOL(id: string) {
   const index = selectedKOLs.value.indexOf(id)
@@ -131,14 +92,18 @@ function isSelected(id: string): boolean {
         <!-- 筛选栏 -->
         <div class="filter-bar">
           <div class="filter-inner">
-            <select v-model="selectedPlatform" class="compact-select">
-              <option v-for="p in mockPlatforms" :key="p" :value="p">
+            <select
+              :value="store.selectedPlatform"
+              class="compact-select"
+              @change="store.setPlatform(($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="p in store.platforms" :key="p" :value="p">
                 {{ p === '全部' ? '全部平台' : p }}
               </option>
             </select>
 
             <input
-              v-model="searchQuery"
+              v-model="store.keyword"
               class="compact-input"
               placeholder="搜索达人/标签/人设"
             />
@@ -147,17 +112,17 @@ function isSelected(id: string): boolean {
 
             <div class="filter-tags">
               <button
-                v-for="tag in mockTags"
+                v-for="tag in store.tags"
                 :key="tag"
                 class="filter-chip"
-                :class="{ active: selectedTags.includes(tag) }"
-                @click="toggleTag(tag)"
+                :class="{ active: store.selectedTags.includes(tag) }"
+                @click="store.toggleTag(tag)"
               >
                 {{ tag }}
               </button>
             </div>
 
-            <button class="cart-btn" v-if="selectedKOLs.length > 0">
+            <button v-if="selectedKOLs.length > 0" class="cart-btn">
               已选 <span class="badge">{{ selectedKOLs.length }}</span>
             </button>
           </div>
@@ -165,7 +130,15 @@ function isSelected(id: string): boolean {
 
         <!-- 数据表格 -->
         <div class="table-container">
-          <div class="table-wrap">
+          <DsLoading v-if="store.loading && store.kolList.length === 0" text="正在加载达人数据..." />
+
+          <DsError
+            v-else-if="store.error && store.kolList.length === 0"
+            :message="store.error"
+            @retry="store.init()"
+          />
+
+          <div v-else class="table-wrap">
             <table>
               <thead>
                 <tr>
@@ -179,7 +152,7 @@ function isSelected(id: string): boolean {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="kol in filteredKOLs" :key="kol.id">
+                <tr v-for="kol in store.filteredList" :key="kol.id">
                   <td>
                     <div class="kol-name">
                       <div class="kol-avatar">{{ kol.avatar }}</div>
@@ -215,10 +188,12 @@ function isSelected(id: string): boolean {
               </tbody>
             </table>
 
-            <div v-if="filteredKOLs.length === 0" class="empty-state">
-              <div class="icon">📭</div>
-              <h3>暂无匹配的达人</h3>
-            </div>
+            <DsEmpty
+              v-if="store.filteredList.length === 0 && !store.loading"
+              icon="📭"
+              title="暂无匹配的达人"
+              description="尝试调整筛选条件或搜索关键词"
+            />
           </div>
         </div>
       </div>
@@ -239,11 +214,11 @@ function isSelected(id: string): boolean {
           </div>
         </div>
 
-        <div class="empty-state">
-          <div class="icon">📋</div>
-          <h3>暂无项目</h3>
-          <p>点击「新建项目」开始创建</p>
-        </div>
+        <DsEmpty
+          icon="📋"
+          title="暂无项目"
+          description="点击「新建项目」开始创建"
+        />
       </div>
     </div>
   </div>
