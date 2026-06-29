@@ -1,6 +1,7 @@
 /**
- * AI 文案 Mock 数据
+ * 小红书文案 Mock API
  */
+import type { ApiResponse } from '@/core/api/types'
 
 export interface CopyTemplate {
   id: string
@@ -9,7 +10,24 @@ export interface CopyTemplate {
   category: string
 }
 
-export const mockCopyTemplates: CopyTemplate[] = [
+export interface CopyGenerateRequest {
+  copyType: string
+  brand: string
+  product: string
+  extra?: string
+}
+
+export interface CopyRefineRequest {
+  content: string
+  instruction: string
+}
+
+export interface CopyGenerateResponse {
+  content: string
+  version: number
+}
+
+const templates: CopyTemplate[] = [
   {
     id: '1',
     name: '小红书种草文案',
@@ -30,24 +48,58 @@ export const mockCopyTemplates: CopyTemplate[] = [
   },
 ]
 
-export interface CopyHistory {
-  id: string
-  prompt: string
-  content: string
-  createdAt: string
+const brands = [
+  { value: '', label: '通用品牌' },
+  { value: '听研 BIOLAB', label: '听研 BIOLAB - 科技护肤' },
+  { value: '汤臣倍健', label: '汤臣倍健 - 保健品' },
+  { value: '她多维', label: '她多维 - 女性维生素' },
+  { value: 'SLIM蛋', label: 'SLIM蛋 - 蛋白粉' },
+  { value: '臻钻蛋白粉', label: '臻钻蛋白粉 - 高端蛋白' },
+  { value: '特医', label: '特医 - 特医食品' },
+]
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-export const mockCopyHistory: CopyHistory[] = [
-  {
-    id: '1',
-    prompt: '为护肤品写小红书文案',
-    content: '【种草】这款精华液真的绝了！用了一周皮肤状态明显变好...',
-    createdAt: '2024-06-25 14:30:00',
+let versionCounter = 0
+
+export const copyMockApi = {
+  async generate(params: CopyGenerateRequest): Promise<ApiResponse<CopyGenerateResponse>> {
+    await delay(1500)
+    versionCounter++
+    const content = `【${params.copyType}】${params.product}
+
+姐妹们！！这款${params.product}真的太绝了！🔥
+
+作为一个成分党，我必须说这个配方真的很良心。${params.brand ? params.brand + '出品，品质有保障。' : ''}
+
+使用感受：
+✨ 质地轻薄，吸收超快
+✨ 用了一周效果明显
+✨ 性价比超高，闭眼入！
+
+#好物分享 #种草 #小红书 #${params.product}
+
+${params.extra ? '备注：' + params.extra : ''}`
+
+    return { code: 0, message: 'success', success: true, data: { content, version: versionCounter } }
   },
-  {
-    id: '2',
-    prompt: '为新品口红写推广文案',
-    content: '新品上市！这款口红颜色太美了，质地丝滑不拔干...',
-    createdAt: '2024-06-25 10:15:00',
+
+  async refine(params: CopyRefineRequest): Promise<ApiResponse<CopyGenerateResponse>> {
+    await delay(1000)
+    versionCounter++
+    const content = params.content + `\n\n【优化】${params.instruction}...`
+    return { code: 0, message: 'success', success: true, data: { content, version: versionCounter } }
   },
-]
+
+  async getTemplates(): Promise<ApiResponse<CopyTemplate[]>> {
+    await delay(300)
+    return { code: 0, message: 'success', success: true, data: templates }
+  },
+
+  async getBrands(): Promise<ApiResponse<Array<{ value: string; label: string }>>> {
+    await delay(200)
+    return { code: 0, message: 'success', success: true, data: brands }
+  },
+}

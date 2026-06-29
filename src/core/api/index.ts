@@ -1,88 +1,40 @@
-import axios from 'axios'
-import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
-import { useAuthStore } from '@/core/stores/auth'
-import { logger } from '@/core/logger'
+/**
+ * API 统一入口
+ * 所有模块通过此文件发起 HTTP 请求
+ */
+import type { AxiosRequestConfig } from 'axios'
+import http from './http'
+import type { ApiResponse } from './types'
 
-// API 响应格式
-export interface ApiResponse<T = any> {
-  code: number
-  message: string
-  data: T
-}
+// Re-export types
+export type { ApiResponse, ApiError, PaginationParams, PaginationResult } from './types'
 
-// 创建 Axios 实例
-const instance: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
+// Re-export error codes
+export { ApiErrorCode, API_ERROR_MESSAGES, getErrorMessage } from './error-code'
 
-// 请求拦截器
-instance.interceptors.request.use(
-  (config) => {
-    const authStore = useAuthStore()
-    if (authStore.token) {
-      config.headers.Authorization = `Bearer ${authStore.token}`
-    }
-    return config
-  },
-  (error) => {
-    logger.error('Request error', error)
-    return Promise.reject(error)
-  },
-)
-
-// 响应拦截器
-instance.interceptors.response.use(
-  (response: AxiosResponse<ApiResponse>) => {
-    return response
-  },
-  async (error) => {
-    const originalRequest = error.config
-
-    // 401 且未重试过
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
-
-      const authStore = useAuthStore()
-      const refreshed = await authStore.refreshUserToken()
-
-      if (refreshed) {
-        originalRequest.headers.Authorization = `Bearer ${authStore.token}`
-        return instance(originalRequest)
-      }
-    }
-
-    logger.error('Response error', error)
-    return Promise.reject(error)
-  },
-)
-
-// 封装请求方法
+/** 封装请求方法，统一解包 ApiResponse */
 export const api = {
-  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return instance.get<ApiResponse<T>>(url, config).then((res) => res.data.data)
+  get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return http.get<ApiResponse<T>>(url, config).then((res) => res.data.data)
   },
 
-  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    return instance.post<ApiResponse<T>>(url, data, config).then((res) => res.data.data)
+  post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    return http.post<ApiResponse<T>>(url, data, config).then((res) => res.data.data)
   },
 
-  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    return instance.put<ApiResponse<T>>(url, data, config).then((res) => res.data.data)
+  put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    return http.put<ApiResponse<T>>(url, data, config).then((res) => res.data.data)
   },
 
-  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return instance.delete<ApiResponse<T>>(url, config).then((res) => res.data.data)
+  delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return http.delete<ApiResponse<T>>(url, config).then((res) => res.data.data)
   },
 
-  upload<T = any>(url: string, file: File, onProgress?: (percent: number) => void): Promise<T> {
+  upload<T>(url: string, file: File, onProgress?: (percent: number) => void): Promise<T> {
     const formData = new FormData()
     formData.append('file', file)
 
-    return instance
+    return http
       .post<ApiResponse<T>>(url, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {

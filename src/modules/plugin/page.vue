@@ -1,48 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import DsLoading from '@/design-system/components/DsLoading.vue'
+import DsError from '@/design-system/components/DsError.vue'
 import DsEmpty from '@/design-system/components/DsEmpty.vue'
+import { usePluginStore } from './store'
 
-// Mock 插件数据
-const plugins = ref([
-  {
-    id: '1',
-    name: '小红书数据采集',
-    description: '一键采集小红书笔记数据，包括点赞、评论、收藏等',
-    icon: '📊',
-    version: '1.2.0',
-    downloads: 1250,
-    category: '数据采集',
-  },
-  {
-    id: '2',
-    name: '抖音达人分析',
-    description: '分析抖音达人的粉丝画像、互动数据、商业价值',
-    icon: '📱',
-    version: '2.0.1',
-    downloads: 890,
-    category: '数据分析',
-  },
-  {
-    id: '3',
-    name: '文案批量生成',
-    description: '基于模板批量生成多平台文案，支持小红书、朋友圈等',
-    icon: '✍️',
-    version: '1.5.0',
-    downloads: 2100,
-    category: 'AI工具',
-  },
-  {
-    id: '4',
-    name: '图片批量处理',
-    description: '批量压缩、裁剪、添加水印，支持多种尺寸',
-    icon: '🖼️',
-    version: '1.0.3',
-    downloads: 560,
-    category: '图片处理',
-  },
-])
+const store = usePluginStore()
 
-// 当前选中的插件
+onMounted(() => {
+  store.init()
+})
+
 const selectedPlugin = ref<string | null>(null)
 
 function selectPlugin(id: string) {
@@ -68,9 +36,24 @@ function goBack() {
 
     <!-- 插件列表 -->
     <div class="plugin-content">
-      <div class="plugin-grid">
+      <DsLoading v-if="store.loading && store.plugins.length === 0" text="正在加载插件..." />
+
+      <DsError
+        v-else-if="store.error && store.plugins.length === 0"
+        :message="store.error"
+        @retry="store.init()"
+      />
+
+      <DsEmpty
+        v-else-if="store.plugins.length === 0 && !store.loading"
+        icon="🔌"
+        title="暂无插件"
+        description="插件中心正在建设中"
+      />
+
+      <div v-else class="plugin-grid">
         <div
-          v-for="plugin in plugins"
+          v-for="plugin in store.plugins"
           :key="plugin.id"
           class="plugin-card"
           @click="selectPlugin(plugin.id)"

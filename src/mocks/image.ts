@@ -1,41 +1,59 @@
 /**
- * AI 图片 Mock 数据
+ * AI 图片 Mock API
  */
+import type { ApiResponse } from '@/core/api/types'
 
-export interface ImageTask {
-  id: string
+export interface ImageGenerateRequest {
   prompt: string
   size: string
-  status: 'pending' | 'generating' | 'completed' | 'failed'
-  url?: string
-  createdAt: string
+  style: string
 }
 
-export const mockImageHistory: ImageTask[] = [
-  {
-    id: '1',
-    prompt: '一只可爱的橘猫在阳光下打盹',
-    size: '1024x1024',
-    status: 'completed',
-    url: 'https://via.placeholder.com/1024',
-    createdAt: '2024-06-25 16:00:00',
-  },
-  {
-    id: '2',
-    prompt: '现代简约风格的客厅设计',
-    size: '1792x1024',
-    status: 'completed',
-    url: 'https://via.placeholder.com/1792x1024',
-    createdAt: '2024-06-25 15:30:00',
-  },
-]
+export interface ImageGenerateResponse {
+  url: string
+  taskId: string
+}
 
-export const mockImageSizes = ['512x512', '1024x1024', '1024x1792', '1792x1024']
+export interface ImageStyle {
+  id: string
+  name: string
+}
 
-export const mockImageStyles = [
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+const sizes = ['512x512', '1024x1024', '1024x1792', '1792x1024']
+
+const styles: ImageStyle[] = [
   { id: 'realistic', name: '写实' },
   { id: 'anime', name: '动漫' },
   { id: 'oil-painting', name: '油画' },
   { id: 'watercolor', name: '水彩' },
   { id: 'sketch', name: '素描' },
 ]
+
+export const imageMockApi = {
+  async generate(params: ImageGenerateRequest): Promise<ApiResponse<ImageGenerateResponse>> {
+    await delay(2000)
+    const [w, h] = params.size.split('x')
+    return {
+      code: 0,
+      message: 'success',
+      data: {
+        url: `https://via.placeholder.com/${w}x${h}`,
+        taskId: `task_${Date.now()}`,
+      },
+    }
+  },
+
+  async getSizes(): Promise<ApiResponse<string[]>> {
+    await delay(200)
+    return { code: 0, message: 'success', success: true, data: sizes }
+  },
+
+  async getStyles(): Promise<ApiResponse<ImageStyle[]>> {
+    await delay(200)
+    return { code: 0, message: 'success', success: true, data: styles }
+  },
+}

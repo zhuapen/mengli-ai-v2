@@ -1,6 +1,9 @@
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { readFileSync } from 'node:fs'
+
+const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
 export default defineConfig({
   plugins: [vue()],
@@ -18,14 +21,19 @@ export default defineConfig({
       },
     },
   },
+  define: {
+    __APP_VERSION__: JSON.stringify(packageJson.version),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   build: {
     outDir: 'dist',
     sourcemap: false,
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['vue', 'vue-router', 'pinia'],
-          utils: ['axios'],
+          network: ['axios'],
         },
       },
     },

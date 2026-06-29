@@ -1,67 +1,53 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { mockHistory } from '@/mocks/history'
+import { ref, onMounted } from 'vue'
+import DsLoading from '@/design-system/components/DsLoading.vue'
+import DsError from '@/design-system/components/DsError.vue'
+import DsEmpty from '@/design-system/components/DsEmpty.vue'
+import { useHistoryStore } from './store'
+import type { HistoryTabType } from './types'
 
-// 状态
-const activeTab = ref<'all' | 'copy' | 'image' | 'article'>('all')
+const store = useHistoryStore()
 
-// 筛选后的历史记录
-const filteredHistory = computed(() => {
-  if (activeTab.value === 'all') {
-    return mockHistory
-  }
-  return mockHistory.filter((item) => item.type === activeTab.value)
+onMounted(() => {
+  store.init()
 })
 
-// 类型图标
 function getTypeIcon(type: string): string {
   switch (type) {
-    case 'copy':
-      return '✍️'
-    case 'image':
-      return '🎨'
-    case 'article':
-      return '📝'
-    default:
-      return '📄'
+    case 'copy': return '✍️'
+    case 'image': return '🎨'
+    case 'article': return '📝'
+    default: return '📄'
   }
 }
 
-// 类型名称
 function getTypeName(type: string): string {
   switch (type) {
-    case 'copy':
-      return '文案'
-    case 'image':
-      return '图片'
-    case 'article':
-      return '写稿'
-    default:
-      return '未知'
+    case 'copy': return '文案'
+    case 'image': return '图片'
+    case 'article': return '写稿'
+    default: return '未知'
   }
 }
 
-// 格式化日期
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr)
   const now = new Date()
   const diff = now.getTime() - date.getTime()
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-
-  if (days === 0) {
-    return '今天 ' + dateStr.split(' ')[1]
-  } else if (days === 1) {
-    return '昨天 ' + dateStr.split(' ')[1]
-  } else if (days < 7) {
-    return `${days}天前`
-  }
+  if (days === 0) return '今天 ' + dateStr.split(' ')[1]
+  if (days === 1) return '昨天 ' + dateStr.split(' ')[1]
+  if (days < 7) return `${days}天前`
   return dateStr
 }
 
-// 展开详情
 const expandedId = ref<string | null>(null)
 function toggleExpand(id: string) {
   expandedId.value = expandedId.value === id ? null : id
+}
+
+function handleTabChange(tab: HistoryTabType) {
+  store.setTab(tab)
 }
 </script>
 
@@ -81,29 +67,29 @@ function toggleExpand(id: string) {
     <div class="history-tabs">
       <button
         class="history-tab"
-        :class="{ active: activeTab === 'all' }"
-        @click="activeTab = 'all'"
+        :class="{ active: store.activeTab === 'all' }"
+        @click="handleTabChange('all')"
       >
         全部
       </button>
       <button
         class="history-tab"
-        :class="{ active: activeTab === 'image' }"
-        @click="activeTab = 'image'"
+        :class="{ active: store.activeTab === 'image' }"
+        @click="handleTabChange('image')"
       >
         图片
       </button>
       <button
         class="history-tab"
-        :class="{ active: activeTab === 'copy' }"
-        @click="activeTab = 'copy'"
+        :class="{ active: store.activeTab === 'copy' }"
+        @click="handleTabChange('copy')"
       >
         文案
       </button>
       <button
         class="history-tab"
-        :class="{ active: activeTab === 'article' }"
-        @click="activeTab = 'article'"
+        :class="{ active: store.activeTab === 'article' }"
+        @click="handleTabChange('article')"
       >
         写稿
       </button>
@@ -111,8 +97,17 @@ function toggleExpand(id: string) {
 
     <!-- History List -->
     <div class="history-list">
+      <DsLoading v-if="store.loading && store.items.length === 0" text="正在加载历史记录..." />
+
+      <DsError
+        v-else-if="store.error && store.items.length === 0"
+        :message="store.error"
+        @retry="store.init()"
+      />
+
+      <template v-else>
       <div
-        v-for="item in filteredHistory"
+        v-for="item in store.filteredItems"
         :key="item.id"
         class="history-item"
         @click="toggleExpand(item.id)"
@@ -146,11 +141,13 @@ function toggleExpand(id: string) {
         </div>
       </div>
 
-      <div v-if="filteredHistory.length === 0" class="empty-state">
-        <div class="icon">📋</div>
-        <h3>暂无历史记录</h3>
-        <p>开始创作后，记录会显示在这里</p>
-      </div>
+      <DsEmpty
+        v-if="store.filteredItems.length === 0 && !store.loading"
+        icon="📋"
+        title="暂无历史记录"
+        description="开始创作后，记录会显示在这里"
+      />
+      </template>
     </div>
   </div>
 </template>

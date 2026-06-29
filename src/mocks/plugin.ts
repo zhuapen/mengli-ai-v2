@@ -1,6 +1,7 @@
 /**
- * 插件中心 Mock 数据
+ * 插件中心 Mock API
  */
+import type { ApiResponse } from '@/core/api/types'
 
 export interface Plugin {
   id: string
@@ -12,7 +13,11 @@ export interface Plugin {
   category: string
 }
 
-export const mockPlugins: Plugin[] = [
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+const plugins: Plugin[] = [
   {
     id: '1',
     name: '小红书数据采集',
@@ -50,3 +55,16 @@ export const mockPlugins: Plugin[] = [
     category: '图片处理',
   },
 ]
+
+export const pluginMockApi = {
+  async getList(): Promise<ApiResponse<Plugin[]>> {
+    await delay(500)
+    return { code: 0, message: 'success', success: true, data: plugins }
+  },
+
+  async getDetail(id: string): Promise<ApiResponse<Plugin | null>> {
+    await delay(300)
+    const plugin = plugins.find((p) => p.id === id) ?? null
+    return { code: 0, message: 'success', success: true, data: plugin }
+  },
+}

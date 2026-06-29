@@ -2,16 +2,18 @@
 interface Props {
   size?: 'sm' | 'md' | 'lg'
   text?: string
+  overlay?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
   size: 'md',
   text: '加载中...',
+  overlay: false,
 })
 </script>
 
 <template>
-  <div class="ds-loading" :class="`ds-loading--${size}`">
+  <div class="ds-loading" :class="[`ds-loading--${size}`, { 'ds-loading--overlay': overlay }]">
     <div class="ds-loading__spinner" />
     <p v-if="text" class="ds-loading__text">{{ text }}</p>
   </div>
@@ -24,6 +26,14 @@ withDefaults(defineProps<Props>(), {
   align-items: center;
   justify-content: center;
   padding: 48px;
+}
+
+.ds-loading--overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.85);
+  z-index: 10;
+  padding: 0;
 }
 
 .ds-loading__spinner {

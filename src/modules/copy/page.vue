@@ -1,19 +1,16 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import DsLoading from '@/design-system/components/DsLoading.vue'
+import DsError from '@/design-system/components/DsError.vue'
+import { useCopyStore } from './store'
+
+const store = useCopyStore()
 
 // 表单数据
 const copyType = ref('种草科普')
 const brand = ref('')
-const platform = ref('小红书')
 const product = ref('')
 const extra = ref('')
-
-// 状态
-const loading = ref(false)
-const output = ref('')
-const versions = ref<string[]>([])
-const currentVersion = ref(0)
 
 // 选项
 const copyTypes = [
@@ -22,10 +19,10 @@ const copyTypes = [
   { value: '场景种草', label: '场景种草 - 生活场景植入' },
   { value: '节点促销', label: '节点促销 - 618/双11/节日' },
   { value: '送礼场景', label: '送礼场景 - 送长辈/送朋友' },
-  { value: '通用文案', label: '通用文案 - 自由创作' },
+  { value: '好物合集', label: '好物合集 - 多款产品盘点' },
 ]
 
-const brands = [
+const brandOptions = [
   { value: '', label: '通用品牌' },
   { value: '听研 BIOLAB', label: '听研 BIOLAB - 科技护肤' },
   { value: '汤臣倍健', label: '汤臣倍健 - 保健品' },
@@ -35,22 +32,14 @@ const brands = [
   { value: '特医', label: '特医 - 特医食品' },
 ]
 
-const platforms = [
-  { value: '小红书', label: '小红书 - 种草笔记' },
-  { value: '朋友圈', label: '朋友圈 - 日常分享' },
-  { value: '公众号', label: '公众号 - 深度长文' },
-  { value: '短视频脚本', label: '短视频 - 口播脚本' },
-]
-
-// 快捷优化选项
 const quickActions = [
   '更口语化',
   '更专业',
   '增加种草感',
+  '增加emoji',
   '增加3个标题',
   '缩短篇幅',
   '扩写内容',
-  '小红书风格',
 ]
 
 const followUpInput = ref('')
@@ -58,33 +47,12 @@ const followUpInput = ref('')
 // 生成文案
 async function handleGenerate() {
   if (!product.value.trim()) return
-
-  loading.value = true
-  output.value = ''
-
-  // Mock 生成
-  await new Promise((resolve) => setTimeout(resolve, 1500))
-
-  const mockOutput = `【${copyType.value}】${product.value}
-
-亲测好用！这款${product.value}真的太绝了！✨
-
-作为一个成分党，我必须说这个配方真的很良心。${brand.value ? brand.value + '出品，品质有保障。' : ''}
-
-使用感受：
-- 质地轻薄，吸收超快
-- 用了一周效果明显
-- 性价比超高
-
-${platform.value === '小红书' ? '#好物分享 #种草 #' + product.value : ''}
-
-${extra.value ? '备注：' + extra.value : ''}`
-
-  output.value = mockOutput
-  versions.value.push(mockOutput)
-  currentVersion.value = versions.value.length - 1
-
-  loading.value = false
+  await store.generate({
+    copyType: copyType.value,
+    brand: brand.value,
+    product: product.value,
+    extra: extra.value,
+  })
 }
 
 // 快捷优化
@@ -96,29 +64,13 @@ function handleQuickRefine(action: string) {
 // 继续优化
 async function handleRefine() {
   if (!followUpInput.value.trim()) return
-
-  loading.value = true
-
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-
-  const refinedOutput = output.value + `\n\n【优化】${followUpInput.value}...`
-  output.value = refinedOutput
-  versions.value.push(refinedOutput)
-  currentVersion.value = versions.value.length - 1
-
+  await store.refine(followUpInput.value)
   followUpInput.value = ''
-  loading.value = false
-}
-
-// 切换版本
-function switchVersion(index: number) {
-  currentVersion.value = index
-  output.value = versions.value[index]
 }
 
 // 复制文案
 function handleCopy() {
-  navigator.clipboard.writeText(output.value)
+  navigator.clipboard.writeText(store.output)
   alert('已复制到剪贴板')
 }
 
@@ -126,9 +78,6 @@ function handleCopy() {
 function handleRetry() {
   handleGenerate()
 }
-
-// 是否有输出
-const hasOutput = computed(() => output.value.length > 0)
 </script>
 
 <template>
@@ -137,8 +86,8 @@ const hasOutput = computed(() => output.value.length > 0)
     <div class="page-header">
       <div class="page-header-inner">
         <div>
-          <h1 class="page-title">文案撰写</h1>
-          <p class="page-desc">萌力互动专属文案工作室 · KOC/UGC 社交文案</p>
+          <h1 class="page-title">小红书文案撰写</h1>
+          <p class="page-desc">萌力互动专属文案工作室 · 小红书种草笔记创作</p>
         </div>
       </div>
     </div>
@@ -155,14 +104,7 @@ const hasOutput = computed(() => output.value.length > 0)
 
         <div class="gen-label" style="margin-top: 24px">品牌</div>
         <select v-model="brand" class="gen-select">
-          <option v-for="item in brands" :key="item.value" :value="item.value">
-            {{ item.label }}
-          </option>
-        </select>
-
-        <div class="gen-label" style="margin-top: 24px">发布平台</div>
-        <select v-model="platform" class="gen-select">
-          <option v-for="item in platforms" :key="item.value" :value="item.value">
+          <option v-for="item in brandOptions" :key="item.value" :value="item.value">
             {{ item.label }}
           </option>
         </select>
@@ -184,10 +126,11 @@ const hasOutput = computed(() => output.value.length > 0)
 
         <button
           class="gen-btn"
-          :disabled="loading || !product.trim()"
+          data-testid="copy-generate"
+          :disabled="store.loading || !product.trim()"
           @click="handleGenerate"
         >
-          {{ loading ? '生成中...' : '生成文案' }}
+          {{ store.loading ? '生成中...' : '生成文案' }}
         </button>
       </div>
 
@@ -197,13 +140,19 @@ const hasOutput = computed(() => output.value.length > 0)
           生成结果
         </div>
 
-        <DsLoading v-if="loading && !output" text="正在生成文案..." />
+        <DsLoading v-if="store.loading && !store.output" text="正在生成文案..." />
+
+        <DsError
+          v-else-if="store.error && !store.output"
+          :message="store.error"
+          @retry="handleRetry"
+        />
 
         <div
-          v-else-if="hasOutput"
+          v-else-if="store.hasOutput"
           class="copy-output"
         >
-          <pre>{{ output }}</pre>
+          <pre>{{ store.output }}</pre>
         </div>
 
         <div v-else class="copy-output empty">
@@ -211,20 +160,20 @@ const hasOutput = computed(() => output.value.length > 0)
         </div>
 
         <!-- 版本条 -->
-        <div v-if="versions.length > 1" class="version-bar">
+        <div v-if="store.versions.length > 1" class="version-bar">
           <span
-            v-for="(v, index) in versions"
+            v-for="(v, index) in store.versions"
             :key="index"
             class="version-item"
-            :class="{ active: index === currentVersion }"
-            @click="switchVersion(index)"
+            :class="{ active: index === store.currentVersion }"
+            @click="store.switchVersion(index)"
           >
             V{{ index + 1 }}
           </span>
         </div>
 
         <!-- 继续优化 -->
-        <div v-if="hasOutput" class="follow-up-bar">
+        <div v-if="store.hasOutput" class="follow-up-bar">
           <div class="follow-up-actions">
             <button
               v-for="action in quickActions"
@@ -243,7 +192,7 @@ const hasOutput = computed(() => output.value.length > 0)
             />
             <button
               class="gen-btn refine-btn"
-              :disabled="loading || !followUpInput.trim()"
+              :disabled="store.loading || !followUpInput.trim()"
               @click="handleRefine"
             >
               继续优化
@@ -254,14 +203,14 @@ const hasOutput = computed(() => output.value.length > 0)
         <!-- 操作按钮 -->
         <div class="copy-actions">
           <button
-            v-if="hasOutput"
+            v-if="store.hasOutput"
             class="gen-btn retry-btn"
             @click="handleRetry"
           >
             重新生成
           </button>
           <button
-            v-if="hasOutput"
+            v-if="store.hasOutput"
             class="gen-btn secondary"
             @click="handleCopy"
           >

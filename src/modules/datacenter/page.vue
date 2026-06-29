@@ -1,37 +1,20 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { onMounted } from 'vue'
+import DsLoading from '@/design-system/components/DsLoading.vue'
+import DsError from '@/design-system/components/DsError.vue'
+import DsEmpty from '@/design-system/components/DsEmpty.vue'
+import { useDatacenterStore } from './store'
 
 const router = useRouter()
+const store = useDatacenterStore()
 
-// 功能卡片
-const features = [
-  {
-    id: 'plugin',
-    icon: '🧩',
-    title: '数据中心',
-    description: '运营工具、浏览器插件、自动化工具下载',
-    route: '/plugin',
-  },
-  {
-    id: 'analysis',
-    icon: '📊',
-    title: 'KOL 分析',
-    description: '达人数据分析、粉丝画像、互动趋势、商业价值评估',
-    route: null,
-  },
-  {
-    id: 'media-library',
-    icon: '📚',
-    title: '智能媒体库',
-    description: 'AI Brief 拆解 · 蒲公英采集 · 达人推荐 · 项目管理',
-    route: '/media',
-  },
-]
+onMounted(() => {
+  store.init()
+})
 
 function navigateTo(route: string | null) {
-  if (route) {
-    router.push(route)
-  }
+  if (route) router.push(route)
 }
 </script>
 
@@ -49,9 +32,24 @@ function navigateTo(route: string | null) {
 
     <!-- 功能卡片 -->
     <div class="dc-content">
-      <div class="dc-grid">
+      <DsLoading v-if="store.loading && store.features.length === 0" text="正在加载数据中心..." />
+
+      <DsError
+        v-else-if="store.error && store.features.length === 0"
+        :message="store.error"
+        @retry="store.init()"
+      />
+
+      <DsEmpty
+        v-else-if="store.features.length === 0 && !store.loading"
+        icon="📊"
+        title="暂无功能"
+        description="数据中心功能正在建设中"
+      />
+
+      <div v-else class="dc-grid">
         <div
-          v-for="feature in features"
+          v-for="feature in store.features"
           :key="feature.id"
           class="dc-card"
           :class="{ clickable: feature.route }"

@@ -1,6 +1,8 @@
 /**
- * 历史记录 Mock 数据
+ * 历史记录 Mock API
  */
+import type { ApiResponse } from '@/core/api/types'
+import type { PaginatedData } from '@/core/api/types'
 
 export interface HistoryItem {
   id: string
@@ -10,7 +12,17 @@ export interface HistoryItem {
   createdAt: string
 }
 
-export const mockHistory: HistoryItem[] = [
+export interface HistoryListParams {
+  page?: number
+  pageSize?: number
+  type?: string
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+const historyData: HistoryItem[] = [
   {
     id: '1',
     type: 'copy',
@@ -40,3 +52,29 @@ export const mockHistory: HistoryItem[] = [
     createdAt: '2024-06-24 09:15:00',
   },
 ]
+
+export const historyMockApi = {
+  async getList(params?: HistoryListParams): Promise<ApiResponse<PaginatedData<HistoryItem>>> {
+    await delay(500)
+    const page = params?.page ?? 1
+    const pageSize = params?.pageSize ?? 10
+    const type = params?.type
+
+    const filtered = type && type !== 'all'
+      ? historyData.filter((item) => item.type === type)
+      : historyData
+
+    return {
+      code: 0,
+      message: 'success',
+      success: true,
+      data: {
+        list: filtered,
+        total: filtered.length,
+        page,
+        pageSize,
+        totalPages: Math.ceil(filtered.length / pageSize),
+      },
+    }
+  },
+}

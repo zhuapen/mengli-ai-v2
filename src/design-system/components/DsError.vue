@@ -1,12 +1,16 @@
 <script setup lang="ts">
 interface Props {
-  error?: Error | null
   title?: string
+  message?: string
+  retryText?: string
+  showRetry?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
-  error: null,
   title: '加载失败',
+  message: '请求失败，请稍后重试',
+  retryText: '重试',
+  showRetry: true,
 })
 
 const emit = defineEmits<{
@@ -18,8 +22,8 @@ const emit = defineEmits<{
   <div class="ds-error">
     <div class="ds-error__icon">⚠️</div>
     <h3 class="ds-error__title">{{ title }}</h3>
-    <p v-if="error?.message" class="ds-error__message">{{ error.message }}</p>
-    <button class="ds-error__retry" @click="emit('retry')">重试</button>
+    <p v-if="message" class="ds-error__message">{{ message }}</p>
+    <button v-if="showRetry" class="ds-error__retry" @click="emit('retry')">{{ retryText }}</button>
   </div>
 </template>
 

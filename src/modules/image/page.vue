@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import DsLoading from '@/design-system/components/DsLoading.vue'
+import DsError from '@/design-system/components/DsError.vue'
+import { useImageStore } from './store'
 
-// 状态
+const store = useImageStore()
+
 const mode = ref<'text2img' | 'img2img'>('text2img')
 const prompt = ref('')
 const img2imgPrompt = ref('')
 const size = ref('1024x1024')
-const loading = ref(false)
-const resultUrl = ref('')
 
-// 尺寸选项
-const sizes = [
+const sizeOptions = [
   { value: '1024x1024', label: '1:1 方形' },
   { value: '1792x1024', label: '16:9 横版' },
   { value: '1024x1792', label: '9:16 竖版' },
@@ -19,38 +19,30 @@ const sizes = [
   { value: '1024x1365', label: '3:4 竖版' },
 ]
 
-// 生成图片
+const currentPrompt = computed(() =>
+  mode.value === 'text2img' ? prompt.value : img2imgPrompt.value,
+)
+
 async function handleGenerate() {
-  const currentPrompt = mode.value === 'text2img' ? prompt.value : img2imgPrompt.value
-  if (!currentPrompt.trim()) return
-
-  loading.value = true
-  resultUrl.value = ''
-
-  // Mock 生成
-  await new Promise((resolve) => setTimeout(resolve, 2000))
-
-  // 使用占位图
-  resultUrl.value = `https://via.placeholder.com/${size.value.replace('x', 'x')}`
-  loading.value = false
+  if (!currentPrompt.value.trim()) return
+  await store.generate({
+    prompt: currentPrompt.value,
+    size: size.value,
+    style: 'realistic',
+  })
 }
 
-// 下载图片
 function handleDownload() {
-  if (!resultUrl.value) return
+  if (!store.outputUrl) return
   const link = document.createElement('a')
-  link.href = resultUrl.value
+  link.href = store.outputUrl
   link.download = `mengli-ai-${Date.now()}.png`
   link.click()
 }
 
-// 重新生成
 function handleRetry() {
   handleGenerate()
 }
-
-// 当前提示词
-const currentPrompt = computed(() => mode.value === 'text2img' ? prompt.value : img2imgPrompt.value)
 </script>
 
 <template>
@@ -121,7 +113,7 @@ const currentPrompt = computed(() => mode.value === 'text2img' ? prompt.value : 
         <div class="gen-label" style="margin-top: 24px">图片尺寸</div>
         <div class="gen-sizes">
           <button
-            v-for="s in sizes"
+            v-for="s in sizeOptions"
             :key="s.value"
             class="gen-size-btn"
             :class="{ active: size === s.value }"
@@ -133,10 +125,11 @@ const currentPrompt = computed(() => mode.value === 'text2img' ? prompt.value : 
 
         <button
           class="gen-btn"
-          :disabled="loading || !currentPrompt.trim()"
+          data-testid="image-generate"
+          :disabled="store.loading || !currentPrompt.trim()"
           @click="handleGenerate"
         >
-          {{ loading ? '生成中...' : '生成图片' }}
+          {{ store.loading ? '生成中...' : '生成图片' }}
         </button>
       </div>
 
@@ -145,10 +138,16 @@ const currentPrompt = computed(() => mode.value === 'text2img' ? prompt.value : 
         <div class="gen-preview">
           <div class="gen-preview-title">预览</div>
 
-          <DsLoading v-if="loading" text="正在生成图片..." />
+          <DsLoading v-if="store.loading" text="正在生成图片..." />
 
-          <div v-else-if="resultUrl" class="gen-result-container">
-            <img :src="resultUrl" alt="生成的图片" class="gen-result" />
+          <DsError
+            v-else-if="store.error && !store.outputUrl"
+            :message="store.error"
+            @retry="handleRetry"
+          />
+
+          <div v-else-if="store.outputUrl" class="gen-result-container">
+            <img :src="store.outputUrl" alt="生成的图片" class="gen-result" />
             <div class="gen-toolbar">
               <button class="gen-toolbar-btn" @click="handleDownload">
                 📥 下载

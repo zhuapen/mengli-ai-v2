@@ -267,43 +267,240 @@ const result = await aiQueue.add('task-id', () => api.generate(prompt))
 
 ---
 
-## 十四、Mock 规范
+## 十四、Mock / API 切换规范（Phase 2）
 
-### Mock 优先原则
-所有页面先使用 Mock 数据，不调用真实接口。
-
-### Mock 文件位置
+### 核心铁律
 ```
-src/mocks/
-├── index.ts        # 统一导出
-├── home.ts         # 首页 Mock
-├── copy.ts         # 文案 Mock
-├── image.ts        # 图片 Mock
-├── media.ts        # 媒体库 Mock
-├── user.ts         # 用户 Mock
-└── history.ts      # 历史 Mock
+Page → Store → Service → API / Mock API
 ```
 
-### 使用方式
+### 数据流
+```
+UI 触发 → Page → Store（状态管理）→ Service（业务编排）→ API / Mock API → 后端 / Mock 数据
+```
+
+### 各层职责（严格遵守）
+
+| 层 | 职责 | 禁止 |
+|----|------|------|
+| **Page** | 只负责 UI + 调 Store | ❌ 直接 import mocks、直接请求数据、setTimeout 模拟 |
+| **Store** | 只做状态管理，只调 Service | ❌ 直接请求 API、写业务逻辑 |
+| **Service** | 业务编排 + Mock/API 切换 | ❌ 写 UI 逻辑、直接操作 DOM |
+| **API** | 只负责 HTTP 请求 | ❌ 任何业务逻辑 |
+| **Mock API** | 模拟后端响应 | ❌ 任何业务逻辑 |
+
+### Mock / API 切换开关
 ```typescript
-import { mockKOLList } from '@/mocks/media'
-
-const kolList = ref(mockKOLList)
+// core/config/feature.ts
+export const features = {
+  enableMock: true, // true = Mock API，false = 真实 API
+}
 ```
 
-### 切换到真实 API
-后续只需替换数据源：
+### Service 统一写法
 ```typescript
-// Mock 阶段
-const kolList = ref(mockKOLList)
+import { isFeatureEnabled } from '@/core/config/feature'
+import { xxxApi } from './api'
+import { xxxMockApi } from '@/mocks/xxx'
 
-// API 阶段
-const { data: kolList } = useRequest(() => mediaApi.getList())
+function useMock(): boolean {
+  return isFeatureEnabled('enableMock')
+}
+
+export const xxxService = {
+  async getData(params) {
+    const impl = useMock() ? xxxMockApi.getData : xxxApi.getData
+    return await impl(params)
+  },
+}
+```
+
+### Mock API 标准格式
+```typescript
+// src/mocks/xxx.ts
+import type { ApiResponse } from '@/core/types/api'
+
+export const xxxMockApi = {
+  async getData(params: GetDataParams): Promise<ApiResponse<GetDataResponse>> {
+    await delay(500)
+    return { code: 0, message: 'success', data: { ... } }
+  },
+}
+```
+
+### 模块标准文件结构
+```
+src/modules/<module>/
+  ├── page.vue      # 只消费 Store
+  ├── store.ts      # Pinia 状态管理
+  ├── service.ts    # 业务编排 + Mock/API 切换
+  ├── api.ts        # 纯 HTTP 请求
+  ├── types.ts      # 类型定义
+  └── components/   # 模块私有组件（可选）
+```
+
+### 禁止行为
+- ❌ Page 直接 import mocks
+- ❌ Page 直接写 fetch / axios
+- ❌ Store 直接请求 API
+- ❌ setTimeout 模拟业务逻辑
+- ❌ 跨模块直接引用 store
+- ❌ 使用 any 类型（核心层除外）
+- ❌ 使用 console.log（使用 logger）
+
+### 一键切换
+将 `enableMock` 改为 `false`，所有模块自动切换到真实 API。无需修改任何页面或 Store 代码。
+
+### 已接入 API 路径
+
+#### Auth 模块
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | /auth/login | 登录 |
+| POST | /auth/register | 注册 |
+| POST | /auth/logout | 登出 |
+| GET | /auth/me | 获取当前用户 |
+
+#### copy 文案模块
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | /copy/generate | 生成文案 |
+| POST | /copy/refine | 优化文案 |
+| GET | /copy/templates | 获取模板 |
+| GET | /copy/brands | 获取品牌 |
+| GET | /copy/history | 获取历史 |
+
+#### image 图片模块
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | /image/generate | 生成图片 |
+| GET | /image/styles | 获取风格 |
+| GET | /image/history | 获取历史 |
+
+#### media 媒体库模块
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /media | 获取媒体列表 |
+| POST | /media/upload | 上传媒体 |
+| DELETE | /media/:id | 删除媒体 |
+| GET | /media/kols | 搜索 KOL |
+| GET | /media/platforms | 获取平台 |
+| GET | /media/tags | 获取标签 |
+
+#### assets 素材库模块
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /assets | 获取素材列表 |
+| POST | /assets | 创建素材 |
+| DELETE | /assets/:id | 删除素材 |
+
+#### history 历史记录模块
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /history | 获取历史列表 |
+| DELETE | /history/:id | 删除单条历史 |
+| DELETE | /history | 清空全部历史 |
+
+#### article 公众号写稿模块
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | /article/generate | 生成文章 |
+| POST | /article/upload | 上传文件 |
+| GET | /article/templates | 获取模板 |
+| GET | /article/drafts | 获取草稿列表 |
+| POST | /article/drafts | 保存草稿 |
+| GET | /article/history | 获取历史 |
+
+#### datacenter 数据中心模块
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /datacenter/features | 获取功能卡片 |
+| GET | /datacenter/overview | 获取概览数据 |
+| GET | /datacenter/trends | 获取趋势数据 |
+| GET | /datacenter/channels | 获取渠道数据 |
+| GET | /datacenter/top-contents | 获取热门内容 |
+
+#### plugin 插件中心模块
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /plugins | 获取插件列表 |
+| GET | /plugins/:id | 获取插件详情 |
+| GET | /plugins/categories | 获取插件分类 |
+| POST | /plugins/:id/enable | 启用插件 |
+| POST | /plugins/:id/disable | 禁用插件 |
+
+#### home 首页模块
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | /home/case-studies | 获取案例 |
+| GET | /home/about | 获取关于我们 |
+| GET | /home/overview | 获取首页概览 |
+| GET | /home/recent | 获取最近记录 |
+| GET | /home/shortcuts | 获取快捷入口 |
+
+---
+
+## 十五、页面状态规范（Phase 3.4）
+
+### 核心组件
+
+| 组件 | 用途 | 关键 Props |
+|------|------|-----------|
+| `DsLoading` | 加载状态 | `text`/`size`/`overlay` |
+| `DsError` | 错误状态 + 重试 | `title`/`message`/`retryText`/`showRetry` → emit `retry` |
+| `DsEmpty` | 空数据状态 | `icon`/`title`/`description`/`actionText`/`showAction` → emit `action` |
+
+### 使用规则
+
+#### 初始加载
+- `loading=true` 且数据为空 → 展示 `DsLoading`
+- `loading=true` 但已有数据 → 保留旧数据，不闪空页面
+
+#### 错误状态
+- `store.error` 存在且无数据 → 展示 `DsError` + retry
+- retry 调用当前页面的初始化 action
+- 错误文案来自 `store.error`，不允许页面自己拼 ApiError
+
+#### 空状态
+- 数据加载完成且列表为空 → 展示 `DsEmpty`
+- 搜索结果为空时文案应体现"未找到相关结果"
+
+#### 局部操作状态
+- 生成/上传/保存/删除等操作 → 使用按钮 loading/disabled
+- 不使用全屏 Loading
+
+### Store error 规范
+
+```typescript
+// 所有 action 统一模式
+async function someAction(): Promise<void> {
+  loading.value = true
+  error.value = null          // 开始时清空
+  try {
+    // ...
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '操作失败'
+  } finally {
+    loading.value = false      // finally 重置
+  }
+}
+```
+
+### 组合式工具
+
+```typescript
+import { usePageState } from '@/core/hooks/usePageState'
+
+const { isInitialLoading, isEmpty, hasError } = usePageState({
+  loading: store.loading,
+  error: store.error,
+  data: store.items,
+})
 ```
 
 ---
 
-## 十五、环境变量规范
+## 十六、环境变量规范
 
 ### 环境文件
 ```
@@ -351,3 +548,162 @@ style(button): 调整按钮样式
 docs(readme): 更新项目说明
 chore(deps): 升级依赖版本
 ```
+
+---
+
+## 十八、API Contract 与后端联调
+
+### 文档索引
+
+- **API Contract**：[docs/api-contract.md](./api-contract.md) — 前后端接口约定
+- **联调 Checklist**：[docs/backend-integration-checklist.md](./backend-integration-checklist.md) — 后端联调检查清单
+
+### 错误码规范
+
+```typescript
+// src/core/api/error-code.ts
+export enum ApiErrorCode {
+  Success = 0,
+  Unauthorized = 401,
+  Forbidden = 403,
+  NotFound = 404,
+  ValidationError = 422,
+  ServerError = 500,
+  NetworkError = 10000,
+  UnknownError = 10001,
+}
+```
+
+### API 层规则
+
+- `api.ts` 只负责 HTTP 请求，返回解包后的 `T`
+- `mock.ts` 返回 `ApiResponse<T>` 包裹格式
+- `service.ts` 判断 `enableMock` 切换数据源
+- `store.ts` 只调用 `service`
+- `page.vue` 只消费 `store`
+
+### 联调切换
+
+```bash
+# 开发环境（Mock）
+VITE_ENABLE_MOCK=true
+
+# 联调/生产环境（真实 API）
+VITE_ENABLE_MOCK=false
+VITE_API_BASE_URL=https://api.mengliai.cn/api
+```
+
+---
+
+## 十九、测试规范（Phase 4）
+
+### 测试技术栈
+
+- **Vitest**：单元测试 / Store / Service 测试
+- **@vue/test-utils**：Vue 组件测试
+- **jsdom**：组件测试运行环境
+- **Playwright**：E2E 测试
+
+### 测试目录
+
+```
+tests/
+├── setup.ts              # 测试环境 setup
+├── utils/                # 测试工具
+├── unit/                 # 单元测试
+│   ├── core/             # 核心层测试
+│   ├── services/         # Service 测试
+│   ├── stores/           # Store 测试
+│   └── components/       # 组件测试
+└── e2e/                  # E2E 测试
+```
+
+### 运行命令
+
+```bash
+npm run test:unit         # 运行单元测试
+npm run test:e2e          # 运行 E2E 测试
+npm run check             # 完整检查（build + lint + test）
+```
+
+### 测试文档
+
+详见 [docs/testing-guide.md](./testing-guide.md)
+
+---
+
+## 二十、部署规范（Phase 5）
+
+### 部署架构
+
+```
+Vue/Vite → npm run build → dist/ → 腾讯云 CVM → Nginx → 域名访问
+```
+
+### 环境变量
+
+| 变量 | 开发环境 | 生产环境 |
+|------|----------|----------|
+| `VITE_APP_ENV` | development | production |
+| `VITE_API_BASE_URL` | http://localhost:3000/api | /api |
+| `VITE_ENABLE_MOCK` | true | false |
+
+### Nginx 关键配置
+
+```nginx
+# 前端路由 fallback
+location / {
+    try_files $uri $uri/ /index.html;
+}
+
+# 后端 API 反向代理
+location /api/ {
+    proxy_pass http://127.0.0.1:3000/api/;
+    proxy_set_header Authorization $http_authorization;
+}
+```
+
+### 部署文档索引
+
+- **部署指南**：[docs/tencent-cloud-deployment.md](./tencent-cloud-deployment.md)
+- **发布检查清单**：[docs/release-checklist.md](./release-checklist.md)
+
+### 部署命令
+
+```bash
+# 本地构建
+npm run build
+
+# 部署到腾讯云
+export TENCENT_CVM_HOST=YOUR_SERVER_IP
+export TENCENT_CVM_USER=root
+export TENCENT_CVM_TARGET_DIR=/var/www/mengli-ai-platform/dist
+npm run deploy:tencent
+```
+
+---
+
+## 二十一、QA 规范（Phase 6）
+
+### 问题优先级
+
+| 级别 | 定义 | 上线要求 |
+|------|------|----------|
+| **P0** | 阻断上线 | 必须修复 |
+| **P1** | 影响核心流程 | 必须修复 |
+| **P2** | 体验问题 | 建议修复 |
+| **P3** | 优化建议 | 可延后 |
+
+### 上线前必跑 Checklist
+
+- [ ] `npm run build` 通过
+- [ ] `npm run test:unit` 全部通过
+- [ ] Auth 全流程通过（登录/退出/401/刷新恢复）
+- [ ] 核心功能冒烟（copy/image/history/assets）
+- [ ] 移动端无严重溢出
+- [ ] 无 P0/P1 问题
+
+### QA 文档
+
+- **QA 检查清单**：[docs/qa-checklist.md](./qa-checklist.md)
+- **发布检查清单**：[docs/release-checklist.md](./release-checklist.md)

@@ -1,102 +1,44 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import DsLoading from '@/design-system/components/DsLoading.vue'
+import DsError from '@/design-system/components/DsError.vue'
+import { useArticleStore } from './store'
 
-// 状态
+const store = useArticleStore()
+
 const mode = ref<'outline' | 'draft'>('outline')
 const extra = ref('')
-const loading = ref(false)
-const output = ref('')
 const uploadedFiles = ref<{ name: string; size: string }[]>([])
 
-// 模式提示
 const modeHint = computed(() => {
   return mode.value === 'outline'
     ? '输出结构化大纲（800-1200字），包含标题、论点框架和要点展开'
     : '输出完整初稿（2000-3000字），包含标题、开头、正文和结尾'
 })
 
-// 处理文件上传
-function handleFileUpload() {
-  // Mock 上传
-  uploadedFiles.value.push({
-    name: '客户需求.docx',
-    size: '25KB',
-  })
+async function handleFileUpload() {
+  const file = new File([''], '客户需求.docx', { type: 'application/msword' })
+  await store.uploadFile(file)
+  if (store.uploadedFile) {
+    uploadedFiles.value.push(store.uploadedFile)
+  }
 }
 
-// 删除文件
 function removeFile(index: number) {
   uploadedFiles.value.splice(index, 1)
 }
 
-// 生成写稿
 async function handleGenerate() {
-  loading.value = true
-  output.value = ''
-
-  await new Promise((resolve) => setTimeout(resolve, 2000))
-
-  const mockOutput = mode.value === 'outline'
-    ? `【公众号文章大纲】
-
-一、标题
-《如何做好品牌营销？这5个技巧你必须知道》
-
-二、开头（150字）
-- 引入话题：品牌营销的重要性
-- 痛点：很多品牌投入大量预算却效果不佳
-- 价值预告：本文将分享5个实战技巧
-
-三、正文要点
-
-1. 明确目标用户画像
-   - 用户调研方法
-   - 画像构建要素
-
-2. 内容策略制定
-   - 内容定位
-   - 内容日历规划
-
-3. 多渠道分发
-   - 平台特性分析
-   - 内容适配策略
-
-4. 数据驱动优化
-   - 关键指标监控
-   - A/B测试方法
-
-5. 用户互动运营
-   - 评论区运营
-   - 社群建设
-
-四、结尾（100字）
-- 总结要点
-- 行动号召
-- 互动引导
-
-${extra.value ? '备注：' + extra.value : ''}`
-    : `【公众号文章初稿】
-
-# 如何做好品牌营销？这5个技巧你必须知道
-
-在当今竞争激烈的市场环境中，品牌营销已经成为企业获取用户、提升影响力的关键手段。然而，很多品牌在投入大量预算后，却发现效果并不理想。
-
-今天，我将分享5个实战验证的品牌营销技巧，帮助你少走弯路。
-
-## 1. 明确目标用户画像
-
-...
-
-${extra.value ? '备注：' + extra.value : ''}`
-
-  output.value = mockOutput
-  loading.value = false
+  await store.generate({
+    title: '品牌营销文章',
+    mode: mode.value,
+    requirements: extra.value || undefined,
+    file: uploadedFiles.value[0],
+  })
 }
 
-// 复制内容
 function handleCopy() {
-  navigator.clipboard.writeText(output.value)
+  navigator.clipboard.writeText(store.output)
   alert('已复制到剪贴板')
 }
 </script>
@@ -168,10 +110,10 @@ function handleCopy() {
 
         <button
           class="gen-btn"
-          :disabled="loading"
+          :disabled="store.loading"
           @click="handleGenerate"
         >
-          {{ loading ? '生成中...' : '生成写稿' }}
+          {{ store.loading ? '生成中...' : '生成写稿' }}
         </button>
       </div>
 
@@ -179,10 +121,16 @@ function handleCopy() {
       <div class="article-right">
         <div class="gen-label">生成结果</div>
 
-        <DsLoading v-if="loading" text="正在生成文章..." />
+        <DsLoading v-if="store.loading" text="正在生成文章..." />
 
-        <div v-else-if="output" class="article-output">
-          <pre>{{ output }}</pre>
+        <DsError
+          v-else-if="store.error && !store.output"
+          :message="store.error"
+          @retry="handleGenerate"
+        />
+
+        <div v-else-if="store.output" class="article-output">
+          <pre>{{ store.output }}</pre>
         </div>
 
         <div v-else class="article-output empty">
@@ -190,7 +138,7 @@ function handleCopy() {
         </div>
 
         <!-- 操作按钮 -->
-        <div v-if="output" class="article-actions">
+        <div v-if="store.output" class="article-actions">
           <button class="gen-btn" @click="handleGenerate">重新生成</button>
           <button class="gen-btn secondary" @click="handleCopy">复制内容</button>
         </div>

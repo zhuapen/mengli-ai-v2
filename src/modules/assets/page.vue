@@ -1,83 +1,24 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
+import DsLoading from '@/design-system/components/DsLoading.vue'
+import DsError from '@/design-system/components/DsError.vue'
 import DsEmpty from '@/design-system/components/DsEmpty.vue'
+import { useAssetsStore } from './store'
 
-// 状态
-const activeTab = ref<'all' | 'image' | 'copy' | 'article' | 'feedback'>('all')
-const searchQuery = ref('')
+const store = useAssetsStore()
 
-// Mock 素材数据
-const assets = ref([
-  {
-    id: '1',
-    type: 'image',
-    title: '产品宣传图',
-    content: 'https://via.placeholder.com/300x200',
-    createdAt: '2024-06-25',
-  },
-  {
-    id: '2',
-    type: 'copy',
-    title: '小红书种草文案',
-    content: '这款精华液真的绝了！用了一周皮肤状态明显变好...',
-    createdAt: '2024-06-25',
-  },
-  {
-    id: '3',
-    type: 'article',
-    title: '品牌营销指南',
-    content: '如何做好品牌营销？这5个技巧你必须知道...',
-    createdAt: '2024-06-24',
-  },
-  {
-    id: '4',
-    type: 'image',
-    title: '社交媒体配图',
-    content: 'https://via.placeholder.com/300x200',
-    createdAt: '2024-06-24',
-  },
-  {
-    id: '5',
-    type: 'copy',
-    title: '朋友圈推广文案',
-    content: '新品上市！限时优惠，错过再等一年...',
-    createdAt: '2024-06-23',
-  },
-])
-
-// 筛选后的素材
-const filteredAssets = computed(() => {
-  let list = [...assets.value]
-
-  // 类型筛选
-  if (activeTab.value !== 'all') {
-    list = list.filter((item) => item.type === activeTab.value)
-  }
-
-  // 搜索筛选
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    list = list.filter(
-      (item) =>
-        item.title.toLowerCase().includes(query) ||
-        item.content.toLowerCase().includes(query),
-    )
-  }
-
-  return list
+onMounted(() => {
+  store.init()
 })
 
-// 类型名称
+const searchQuery = ref('')
+
 function getTypeName(type: string): string {
   switch (type) {
-    case 'image':
-      return '图片'
-    case 'copy':
-      return '文案'
-    case 'article':
-      return '写稿'
-    default:
-      return '未知'
+    case 'image': return '图片'
+    case 'copy': return '文案'
+    case 'article': return '写稿'
+    default: return '未知'
   }
 }
 </script>
@@ -99,36 +40,36 @@ function getTypeName(type: string): string {
     <div class="assets-tabs">
       <button
         class="assets-tab"
-        :class="{ active: activeTab === 'all' }"
-        @click="activeTab = 'all'"
+        :class="{ active: store.activeTab === 'all' }"
+        @click="store.setTab('all')"
       >
         全部
       </button>
       <button
         class="assets-tab"
-        :class="{ active: activeTab === 'image' }"
-        @click="activeTab = 'image'"
+        :class="{ active: store.activeTab === 'image' }"
+        @click="store.setTab('image')"
       >
         图片
       </button>
       <button
         class="assets-tab"
-        :class="{ active: activeTab === 'copy' }"
-        @click="activeTab = 'copy'"
+        :class="{ active: store.activeTab === 'copy' }"
+        @click="store.setTab('copy')"
       >
         文案
       </button>
       <button
         class="assets-tab"
-        :class="{ active: activeTab === 'article' }"
-        @click="activeTab = 'article'"
+        :class="{ active: store.activeTab === 'article' }"
+        @click="store.setTab('article')"
       >
         写稿
       </button>
       <button
         class="assets-tab"
-        :class="{ active: activeTab === 'feedback' }"
-        @click="activeTab = 'feedback'"
+        :class="{ active: store.activeTab === 'feedback' }"
+        @click="store.setTab('feedback')"
       >
         ⭐ 反馈库
       </button>
@@ -145,9 +86,17 @@ function getTypeName(type: string): string {
 
     <!-- 素材列表 -->
     <div class="assets-content">
-      <div v-if="filteredAssets.length > 0" class="assets-grid">
+      <DsLoading v-if="store.loading && store.items.length === 0" text="正在加载素材..." />
+
+      <DsError
+        v-else-if="store.error && store.items.length === 0"
+        :message="store.error"
+        @retry="store.init()"
+      />
+
+      <div v-else-if="store.filteredItems.length > 0" class="assets-grid">
         <div
-          v-for="asset in filteredAssets"
+          v-for="asset in store.filteredItems"
           :key="asset.id"
           class="asset-card"
         >

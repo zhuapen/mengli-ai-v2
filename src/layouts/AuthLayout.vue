@@ -32,10 +32,12 @@ import { RouterView } from 'vue-router'
   gap: 80px;
   align-items: center;
   max-width: 1000px;
+  width: 100%;
 }
 
 .auth-brand {
   text-align: center;
+  flex-shrink: 0;
 }
 
 .auth-logo {
@@ -60,5 +62,26 @@ import { RouterView } from 'vue-router'
 .auth-content {
   flex: 1;
   max-width: 400px;
+  min-width: 0;
+}
+
+/* 移动端：隐藏品牌区域，只显示表单 */
+@media (max-width: 768px) {
+  .auth-layout {
+    padding: 24px;
+  }
+
+  .auth-container {
+    gap: 0;
+    justify-content: center;
+  }
+
+  .auth-brand {
+    display: none;
+  }
+
+  .auth-content {
+    max-width: 100%;
+  }
 }
 </style>

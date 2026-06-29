@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { onMounted, ref } from 'vue'
-import { mockCaseStudies, mockAboutItems } from '@/mocks/home'
+import DsError from '@/design-system/components/DsError.vue'
+import DsEmpty from '@/design-system/components/DsEmpty.vue'
+import { useHomeStore } from './store'
 
 const router = useRouter()
+const store = useHomeStore()
 
 // 滚动动画
 const observer = ref<IntersectionObserver | null>(null)
 
 onMounted(() => {
+  store.init()
+
   observer.value = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -42,8 +47,8 @@ const features = [
   },
   {
     icon: '✍️',
-    title: '文案撰写',
-    description: '智能文案创作，适配各平台风格的种草内容',
+    title: '小红书文案撰写',
+    description: 'AI 智能创作小红书种草笔记，一键生成爆款文案',
     route: '/copy',
     delay: '1.0s',
   },
@@ -84,9 +89,23 @@ function navigateTo(path: string) {
     <section class="home-section">
       <h2 class="home-section-title fade-in">精选案例</h2>
       <p class="home-section-desc fade-in">我们为品牌打造的营销奇迹</p>
-      <div class="placeholder-grid">
+
+      <DsError
+        v-if="store.error && store.caseStudies.length === 0"
+        :message="store.error"
+        @retry="store.init()"
+      />
+
+      <DsEmpty
+        v-else-if="store.caseStudies.length === 0 && !store.loading"
+        icon="📦"
+        title="暂无案例"
+        description="精选案例正在准备中"
+      />
+
+      <div v-else class="placeholder-grid">
         <div
-          v-for="(item, index) in mockCaseStudies"
+          v-for="(item, index) in store.caseStudies"
           :key="item.id"
           class="placeholder-card"
           :class="index === 0 ? 'fade-in-left' : index === 2 ? 'fade-in-right' : 'fade-in'"
@@ -100,9 +119,17 @@ function navigateTo(path: string) {
     <section class="home-section">
       <h2 class="home-section-title fade-in">关于我们</h2>
       <p class="home-section-desc fade-in">萌力互动 — 您的全域营销合作伙伴</p>
-      <div class="placeholder-grid">
+
+      <DsEmpty
+        v-if="store.aboutItems.length === 0 && !store.loading"
+        icon="🏢"
+        title="暂无信息"
+        description="公司信息正在准备中"
+      />
+
+      <div v-else class="placeholder-grid">
         <div
-          v-for="(item, index) in mockAboutItems"
+          v-for="(item, index) in store.aboutItems"
           :key="item.id"
           class="placeholder-card"
           :class="index === 0 ? 'fade-in-left' : index === 2 ? 'fade-in-right' : 'fade-in'"

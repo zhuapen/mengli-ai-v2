@@ -1,0 +1,55 @@
+name: Deploy to Tencent CVM
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_ENABLE_MOCK: 'false'
+          VITE_API_BASE_URL: '/api'
+
+      - name: Deploy via rsync
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -avz --delete
+          path: dist/
+          remote_path: ${{ secrets.TENCENT_CVM_TARGET_DIR }}
+          remote_host: ${{ secrets.TENCENT_CVM_HOST }}
+          remote_user: ${{ secrets.TENCENT_CVM_USER }}
+          remote_key: ${{ secrets.TENCENT_CVM_SSH_KEY }}
+
+      - name: Reload Nginx
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.TENCENT_CVM_HOST }}
+          username: ${{ secrets.TENCENT_CVM_USER }}
+          key: ${{ secrets.TENCENT_CVM_SSH_KEY }}
+          script: sudo systemctl reload nginx

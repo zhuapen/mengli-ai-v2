@@ -1,6 +1,7 @@
 /**
- * 数据中心 Mock 数据
+ * 数据中心 Mock API
  */
+import type { ApiResponse } from '@/core/api/types'
 
 export interface DataCenterFeature {
   id: string
@@ -10,7 +11,11 @@ export interface DataCenterFeature {
   route: string | null
 }
 
-export const mockDataCenterFeatures: DataCenterFeature[] = [
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+const features: DataCenterFeature[] = [
   {
     id: 'plugin',
     icon: '🧩',
@@ -33,3 +38,10 @@ export const mockDataCenterFeatures: DataCenterFeature[] = [
     route: '/media',
   },
 ]
+
+export const datacenterMockApi = {
+  async getFeatures(): Promise<ApiResponse<DataCenterFeature[]>> {
+    await delay(500)
+    return { code: 0, message: 'success', success: true, data: features }
+  },
+}

@@ -1,6 +1,9 @@
 /**
- * 用户 Mock 数据
+ * 用户 Mock API（兼容旧接口）
+ * Auth 模块已迁移到 modules/auth/mock.ts
+ * 此文件保留用于其他模块需要获取用户信息的场景
  */
+import type { ApiResponse } from '@/core/api/types'
 
 export interface MockUser {
   id: string
@@ -12,7 +15,11 @@ export interface MockUser {
   createdAt: string
 }
 
-export const mockUser: MockUser = {
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+const mockUserData: MockUser = {
   id: '1',
   username: '萌力用户',
   email: 'user@mengli.ai',
@@ -22,12 +29,9 @@ export const mockUser: MockUser = {
   createdAt: '2024-01-15',
 }
 
-export const mockAdminUser: MockUser = {
-  id: '2',
-  username: '管理员',
-  email: 'admin@mengli.ai',
-  avatar: '👑',
-  role: 'admin',
-  credits: 9999,
-  createdAt: '2023-06-01',
+export const userMockApi = {
+  async getUserInfo(): Promise<ApiResponse<MockUser>> {
+    await delay(500)
+    return { code: 0, message: 'success', success: true, data: mockUserData }
+  },
 }
