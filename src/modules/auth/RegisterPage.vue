@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/core/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const username = ref('')
-const email = ref('')
+const account = ref('')
 const password = ref('')
 const confirmPassword = ref('')
-const loading = ref(false)
 const error = ref('')
 const success = ref(false)
 
 async function handleRegister() {
   error.value = ''
 
-  if (!username.value || !email.value || !password.value) {
+  if (!username.value || !account.value || !password.value) {
     error.value = '请填写所有必填字段'
     return
   }
@@ -30,21 +31,19 @@ async function handleRegister() {
     return
   }
 
-  loading.value = true
-
   try {
-    // Mock 注册
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await userStore.register({
+      username: username.value,
+      account: account.value,
+      password: password.value,
+    })
     success.value = true
-
-    // 2秒后跳转到登录
+    // 注册成功后已登录，直接跳转首页
     setTimeout(() => {
-      router.push({ name: 'Login' })
-    }, 2000)
-  } catch {
-    error.value = '注册失败，请稍后重试'
-  } finally {
-    loading.value = false
+      router.push({ name: 'Home' })
+    }, 1500)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '注册失败，请稍后重试'
   }
 }
 
@@ -68,7 +67,7 @@ function closeModal() {
       <div v-if="success" class="success-message">
         <div class="success-icon">✅</div>
         <h4>注册成功！</h4>
-        <p>正在跳转到登录页面...</p>
+        <p>正在进入首页...</p>
       </div>
 
       <template v-else>
@@ -79,16 +78,18 @@ function closeModal() {
           <input
             v-model="username"
             type="text"
+            data-testid="register-username"
             placeholder="请输入用户名"
           />
         </div>
 
         <div class="form-group">
-          <label>邮箱</label>
+          <label>账号</label>
           <input
-            v-model="email"
-            type="email"
-            placeholder="请输入邮箱"
+            v-model="account"
+            type="text"
+            data-testid="register-account"
+            placeholder="请输入账号（邮箱或手机号）"
           />
         </div>
 
@@ -97,6 +98,7 @@ function closeModal() {
           <input
             v-model="password"
             type="password"
+            data-testid="register-password"
             placeholder="请输入密码（至少6位）"
           />
         </div>
@@ -113,10 +115,11 @@ function closeModal() {
 
         <button
           class="register-submit-btn"
-          :disabled="loading || !username || !email || !password || !confirmPassword"
+          data-testid="register-submit"
+          :disabled="userStore.loading || !username || !account || !password || !confirmPassword"
           @click="handleRegister"
         >
-          {{ loading ? '注册中...' : '注册' }}
+          {{ userStore.loading ? '注册中...' : '注册' }}
         </button>
 
         <div class="register-footer">

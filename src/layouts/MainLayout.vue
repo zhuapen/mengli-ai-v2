@@ -20,4 +20,10 @@ import AppNavbar from '@/design-system/components/AppNavbar.vue'
 .main-content {
   padding-top: 72px; /* Navbar height */
 }
+
+@media (max-width: 768px) {
+  .main-content {
+    padding-top: 60px; /* 移动端 Navbar 高度 */
+  }
+}
 </style>

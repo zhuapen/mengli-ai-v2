@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '@/core/stores/auth'
-import { mockUser } from '@/mocks/user'
+import { useUserStore } from '@/core/stores/user'
 
 const router = useRouter()
 const route = useRoute()
-const authStore = useAuthStore()
+const userStore = useUserStore()
 
 const navLinks = [
   { name: '首页', path: '/', routeName: 'Home' },
   { name: '📚 媒体库', path: '/media', routeName: 'Media' },
   { name: '图片生成', path: '/image', routeName: 'Image' },
-  { name: '文案撰写', path: '/copy', routeName: 'Copy' },
+  { name: '小红书文案撰写', path: '/copy', routeName: 'Copy' },
   { name: '公众号写稿', path: '/article', routeName: 'Article' },
   { name: '素材库', path: '/assets', routeName: 'Assets' },
   { name: '数据中心', path: '/datacenter', routeName: 'DataCenter' },
@@ -30,8 +29,8 @@ const handleRegister = () => {
   router.push({ name: 'Register' })
 }
 
-const handleLogout = () => {
-  authStore.logout()
+const handleLogout = async () => {
+  await userStore.logout()
   router.push({ name: 'Home' })
 }
 </script>
@@ -58,14 +57,14 @@ const handleLogout = () => {
     </div>
 
     <div id="userSection">
-      <template v-if="!authStore.isAuthenticated">
+      <template v-if="!userStore.isLoggedIn">
         <button class="btn-register" @click="handleRegister">注册</button>
         <button class="btn-login" @click="handleLogin">登录</button>
       </template>
       <template v-else>
         <div class="user-info">
-          <span class="user-avatar">{{ mockUser.avatar }}</span>
-          <span class="username">{{ mockUser.username }}</span>
+          <span class="user-avatar" data-testid="navbar-avatar">{{ userStore.avatar }}</span>
+          <span class="username" data-testid="navbar-username">{{ userStore.username }}</span>
           <button class="btn-logout" @click="handleLogout">退出</button>
         </div>
       </template>
@@ -234,6 +233,26 @@ const handleLogout = () => {
 .btn-logout:hover {
   color: var(--ds-color-error);
   border-color: var(--ds-color-error);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .nav {
+    padding: 0 16px;
+    height: 60px;
+  }
+
+  .nav-left {
+    gap: 16px;
+  }
+
+  .nav-logo-text {
+    display: none;
+  }
+
+  .nav-links {
+    display: none;
+  }
 }
 
 @keyframes slideDown {

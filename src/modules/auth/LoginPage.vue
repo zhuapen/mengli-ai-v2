@@ -1,43 +1,30 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '@/core/stores/auth'
+import { useUserStore } from '@/core/stores/user'
 
 const router = useRouter()
 const route = useRoute()
-const authStore = useAuthStore()
+const userStore = useUserStore()
 
-const username = ref('')
+const account = ref('')
 const password = ref('')
-const loading = ref(false)
 const error = ref('')
 
 async function handleLogin() {
-  if (!username.value || !password.value) {
+  if (!account.value || !password.value) {
     error.value = '请输入用户名和密码'
     return
   }
 
-  loading.value = true
   error.value = ''
 
   try {
-    // Mock 登录
-    await new Promise((resolve) => setTimeout(resolve, 800))
-
-    if (username.value === 'admin' && password.value === '123456') {
-      // 模拟登录成功 - 直接设置 token（Mock 阶段）
-      authStore.setMockToken('mock-token-123456')
-
-      const redirect = (route.query.redirect as string) || '/'
-      router.push(redirect)
-    } else {
-      error.value = '用户名或密码错误'
-    }
-  } catch {
-    error.value = '登录失败，请稍后重试'
-  } finally {
-    loading.value = false
+    await userStore.login({ account: account.value, password: password.value })
+    const redirect = (route.query.redirect as string) || '/'
+    router.push(redirect)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '登录失败，请稍后重试'
   }
 }
 
@@ -63,8 +50,9 @@ function closeModal() {
       <div class="form-group">
         <label>用户名</label>
         <input
-          v-model="username"
+          v-model="account"
           type="text"
+          data-testid="login-account"
           placeholder="请输入用户名"
           @keyup.enter="handleLogin"
         />
@@ -75,6 +63,7 @@ function closeModal() {
         <input
           v-model="password"
           type="password"
+          data-testid="login-password"
           placeholder="请输入密码"
           @keyup.enter="handleLogin"
         />
@@ -82,10 +71,11 @@ function closeModal() {
 
       <button
         class="login-submit-btn"
-        :disabled="loading || !username || !password"
+        data-testid="login-submit"
+        :disabled="userStore.loading || !account || !password"
         @click="handleLogin"
       >
-        {{ loading ? '登录中...' : '登录' }}
+        {{ userStore.loading ? '登录中...' : '登录' }}
       </button>
 
       <div class="login-footer">
