@@ -4,7 +4,7 @@ test.describe('导航', () => {
   test.beforeEach(async ({ page }) => {
     // 登录
     await page.goto('/login')
-    await page.fill('[data-testid="login-account"]', 'admin')
+    await page.fill('[data-testid="login-email"]', 'admin@mengli.ai')
     await page.fill('[data-testid="login-password"]', '123456')
     await page.click('[data-testid="login-submit"]')
     await page.waitForURL('/')

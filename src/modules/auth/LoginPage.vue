@@ -7,20 +7,20 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
-const account = ref('')
+const email = ref('')
 const password = ref('')
 const error = ref('')
 
 async function handleLogin() {
-  if (!account.value || !password.value) {
-    error.value = '请输入用户名和密码'
+  if (!email.value || !password.value) {
+    error.value = '请输入邮箱和密码'
     return
   }
 
   error.value = ''
 
   try {
-    await userStore.login({ account: account.value, password: password.value })
+    await userStore.login({ email: email.value, password: password.value })
     const redirect = (route.query.redirect as string) || '/'
     router.push(redirect)
   } catch (e) {
@@ -48,12 +48,12 @@ function closeModal() {
       <div class="login-error">{{ error }}</div>
 
       <div class="form-group">
-        <label>用户名</label>
+        <label>邮箱</label>
         <input
-          v-model="account"
-          type="text"
-          data-testid="login-account"
-          placeholder="请输入用户名"
+          v-model="email"
+          type="email"
+          data-testid="login-email"
+          placeholder="请输入邮箱"
           @keyup.enter="handleLogin"
         />
       </div>
@@ -72,7 +72,7 @@ function closeModal() {
       <button
         class="login-submit-btn"
         data-testid="login-submit"
-        :disabled="userStore.loading || !account || !password"
+        :disabled="userStore.loading || !email || !password"
         @click="handleLogin"
       >
         {{ userStore.loading ? '登录中...' : '登录' }}
@@ -84,7 +84,7 @@ function closeModal() {
       </div>
 
       <div class="login-hint">
-        <p>测试账号：admin / 123456</p>
+        <p>测试账号：admin@mengli.ai / 123456</p>
       </div>
     </div>
   </div>

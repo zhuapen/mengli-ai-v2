@@ -39,13 +39,18 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  /** 注册 */
-  async function register(params: RegisterParams): Promise<void> {
+  /**
+   * 注册
+   * 后端注册不返回 tokens，不设置登录态
+   * 返回注册结果消息
+   */
+  async function register(params: RegisterParams): Promise<string> {
     loading.value = true
     error.value = null
     try {
       const result = await authService.register(params)
-      user.value = result.user
+      // 注册不写入 user，需要管理员审批
+      return result.message
     } catch (e) {
       error.value = e instanceof Error ? e.message : '注册失败'
       throw e

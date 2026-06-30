@@ -107,18 +107,32 @@ interface AuthTokens {
 
 | Method | Path | Request Body | Response Data | 需要登录 |
 |--------|------|-------------|---------------|----------|
-| POST | /auth/login | `{ account: string, password: string }` | `LoginResult` | ❌ |
-| POST | /auth/register | `{ username: string, account: string, password: string }` | `RegisterResult` | ❌ |
+| POST | /auth/login | `{ email: string, password: string }` | `LoginResponse` | ❌ |
+| POST | /auth/register | `{ email: string, password: string }` | `RegisterResponse` | ❌ |
 | POST | /auth/logout | — | `null` | ✅ |
-| GET | /auth/me | — | `AuthUser` | ✅ |
+| GET | /auth/me | — | `BackendUser` | ✅ |
 
-**LoginResult:**
+**LoginResponse（后端返回）：**
 ```typescript
 {
-  user: { id: string, username: string, avatar?: string, role: string }
+  user: { id: string, email: string, display_name?: string, role: string, status?: string }
   tokens: { accessToken: string, refreshToken?: string }
 }
 ```
+
+**RegisterResponse（后端返回，无 tokens）：**
+```typescript
+{
+  user: { id: string, email: string, display_name?: string, role: string, status?: string }
+  message: string  // "注册成功，等待管理员审批"
+}
+```
+
+**注意：**
+- 登录使用 `email` + `password`，不是 `account`
+- 注册只返回 `user` + `message`，不返回 `tokens`
+- 注册后需要管理员审批，不能直接登录
+- 后端用户字段为 `display_name`，前端 service 层转换为 `username`
 
 ### Copy 模块
 
