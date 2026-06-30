@@ -1,6 +1,9 @@
 /**
  * 历史记录 Service
- * 业务编排 + Mock/API 自动切换 + 错误转换 + 日志
+ *
+ * ⚠️ 临时 fallback：后端 /history 接口尚未完全就绪
+ * 当前策略：尝试真实 API，失败时回退到 mock 数据
+ * 待后端 history API 稳定后，移除 FALLBACK_TO_MOCK，恢复标准 mock/api 切换
  */
 import { isFeatureEnabled } from '@/core/config/feature'
 import { logger } from '@/core/logger'
@@ -8,8 +11,11 @@ import { historyApi } from './api'
 import { historyMockApi } from './mock'
 import type { HistoryQueryParams, HistoryListResult } from './types'
 
+/** 后端接口就绪后将此常量改为 false 或移除整个 fallback 逻辑 */
+const FALLBACK_TO_MOCK = true
+
 function useMock(): boolean {
-  return isFeatureEnabled('enableMock')
+  return isFeatureEnabled('enableMock') || FALLBACK_TO_MOCK
 }
 
 export const historyService = {
@@ -23,8 +29,9 @@ export const historyService = {
       return await historyApi.getList(params)
     } catch (e) {
       const msg = e instanceof Error ? e.message : '获取历史记录失败'
-      logger.error('[HistoryService] getList failed', msg)
-      throw new Error(msg)
+      logger.error('[HistoryService] getList failed, falling back to mock', msg)
+      const res = await historyMockApi.getList(params)
+      return res.data
     }
   },
 
