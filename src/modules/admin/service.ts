@@ -8,7 +8,6 @@ import { logger } from '@/core/logger'
 import { adminApi } from './api'
 import { adminMockApi } from './mock'
 import type {
-  AdminUser,
   AdminUserListParams,
   AdminUserListResult,
   AdminApprovalResult,
