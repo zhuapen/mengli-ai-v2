@@ -1,9 +1,26 @@
 # Mengli AI Platform V2 - 项目进度
 
-## 当前阶段：Phase 3.3 进行中
+## 当前阶段：v0.1.0 已上线 ✅
 
 ### 更新时间
-2026-06-29
+2026-06-30
+
+### 线上部署状态
+
+| 项目 | 状态 |
+|------|------|
+| 版本 | v0.1.0 |
+| 部署域名 | https://www.mengliai.cn |
+| GitHub | https://github.com/zhuapen/mengli-ai-v2 |
+| 最新 commit | `ed559b8` feat(media): migrate kol discovery to v2 architecture |
+| Git tag | v0.1.0 |
+| 腾讯云 CVM | 43.128.56.10 |
+| Nginx | 已切到 V2 前端，SPA fallback 正常 |
+| API 代理 | `/api/` → `127.0.0.1:8891` |
+| SSL | Let's Encrypt 证书有效 |
+| 前端部署目录 | `/var/www/mengli-ai-platform/dist/` |
+| 旧前端备份 | `/var/backups/mengli/` |
+| 上线状态 | 前端部署完成，等待真实业务接口联调 |
 
 ---
 
