@@ -5,21 +5,21 @@
 import api from '@/core/api'
 import type {
   LoginParams,
-  LoginResponse,
+  BackendLoginResponse,
   RegisterParams,
-  RegisterResponse,
+  BackendRegisterResponse,
   BackendUser,
 } from './types'
 
 export const authApi = {
   /** 登录 */
-  login(params: LoginParams): Promise<LoginResponse> {
-    return api.post<LoginResponse>('/auth/login', params)
+  login(params: LoginParams): Promise<BackendLoginResponse> {
+    return api.post<BackendLoginResponse>('/auth/login', params)
   },
 
   /** 注册 */
-  register(params: RegisterParams): Promise<RegisterResponse> {
-    return api.post<RegisterResponse>('/auth/register', params)
+  register(params: RegisterParams): Promise<BackendRegisterResponse> {
+    return api.post<BackendRegisterResponse>('/auth/register', params)
   },
 
   /** 登出 */

@@ -22,6 +22,8 @@ export interface BackendUser {
   display_name?: string
   role: string
   status?: string
+  position?: string
+  is_active?: boolean
 }
 
 /** 前端统一用户结构（经 service 转换） */
@@ -40,14 +42,14 @@ export interface AuthTokens {
   refreshToken?: string
 }
 
-/** 登录响应（后端返回） */
-export interface LoginResponse {
+/** 后端登录响应（直接返回，无 ApiResponse 包裹） */
+export interface BackendLoginResponse {
+  token: string
   user: BackendUser
-  tokens: AuthTokens
 }
 
-/** 注册响应（后端返回，无 tokens） */
-export interface RegisterResponse {
+/** 后端注册响应（直接返回，无 ApiResponse 包裹） */
+export interface BackendRegisterResponse {
   user: BackendUser
   message: string
 }

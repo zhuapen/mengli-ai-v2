@@ -36,51 +36,45 @@ function normalizeUser(user: BackendUser): AuthUser {
 export const authService = {
   /**
    * 登录
-   * 成功后写入 token，返回转换后的用户信息
+   * 后端返回 { token, user }，转换为前端 { user, tokens }
+   * 成功后写入 token
    */
   async login(params: LoginParams): Promise<LoginResult> {
     logger.info('[AuthService] login', { email: params.email })
 
     const res = useMock()
       ? await authMockApi.login(params)
-      : { code: 0, message: 'success', success: true, data: await authApi.login(params) }
+      : await authApi.login(params)
 
-    if (!res.success || res.code !== 0) {
-      throw new Error(res.message || '登录失败')
-    }
+    // 后端返回 { token, user }
+    // 保存 token
+    setTokens(res.token)
+    logger.info('[AuthService] login success', { userId: res.user.id })
 
-    // 写入 token
-    setTokens(res.data.tokens.accessToken, res.data.tokens.refreshToken)
-    logger.info('[AuthService] login success', { userId: res.data.user.id })
-
-    // 转换用户结构
+    // 转换为前端格式
     return {
-      user: normalizeUser(res.data.user),
-      tokens: res.data.tokens,
+      user: normalizeUser(res.user),
+      tokens: { accessToken: res.token },
     }
   },
 
   /**
    * 注册
-   * 后端注册不返回 tokens，不写入 token
+   * 后端返回 { user, message }，无 tokens
+   * 注册后不写入 token，需要管理员审批
    */
   async register(params: RegisterParams): Promise<RegisterResult> {
     logger.info('[AuthService] register', { email: params.email })
 
     const res = useMock()
       ? await authMockApi.register(params)
-      : { code: 0, message: 'success', success: true, data: await authApi.register(params) }
-
-    if (!res.success || res.code !== 0) {
-      throw new Error(res.message || '注册失败')
-    }
+      : await authApi.register(params)
 
     logger.info('[AuthService] register success')
 
-    // 注册不写入 token，需要管理员审批
     return {
-      user: normalizeUser(res.data.user),
-      message: res.data.message,
+      user: normalizeUser(res.user),
+      message: res.message,
     }
   },
 
@@ -98,7 +92,6 @@ export const authService = {
         await authApi.logout()
       }
     } catch {
-      // 登出接口失败不影响本地清理
       logger.warn('[AuthService] logout API failed, clearing local tokens anyway')
     }
 
@@ -113,17 +106,18 @@ export const authService = {
   async getCurrentUser(): Promise<AuthUser> {
     logger.info('[AuthService] getCurrentUser')
 
-    if (useMock()) {
-      const res = await authMockApi.getCurrentUser()
-      if (!res.success || res.code !== 0) {
-        clearTokens()
-        throw new Error(res.message || '获取用户信息失败')
-      }
-      return normalizeUser(res.data)
-    }
+    try {
+      const user = useMock()
+        ? await authMockApi.getCurrentUser()
+        : await authApi.getCurrentUser()
 
-    const user = await authApi.getCurrentUser()
-    return normalizeUser(user)
+      return normalizeUser(user)
+    } catch (e) {
+      clearTokens()
+      const msg = e instanceof Error ? e.message : '获取用户信息失败'
+      logger.error('[AuthService] getCurrentUser failed', msg)
+      throw new Error(msg)
+    }
   },
 
   /**
