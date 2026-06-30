@@ -302,6 +302,22 @@ Authorization: Bearer <token>
 | GET | /home/recent | — | `HomeRecentItem[]` | ✅ |
 | GET | /home/shortcuts | — | `HomeShortcut[]` | ✅ |
 
+### Admin 管理员模块
+
+| Method | Path | Request Body/Params | Response Data | 需要登录 |
+|--------|------|---------------------|---------------|----------|
+| GET | /admin/users | `?status=&keyword=` | `{ users: AdminUser[] }` | ✅ admin |
+| POST | /admin/users | `{ email, password, display_name?, role? }` | `{ message, user_id }` | ✅ admin |
+| PUT | /admin/users/:id/approve | — | `{ message }` | ✅ admin |
+| PUT | /admin/users/:id/reject | — | `{ message }` | ✅ admin |
+| PUT | /admin/users/:id/toggle | — | `{ message }` | ✅ admin |
+| DELETE | /admin/users/:id | — | `{ message }` | ✅ admin |
+
+**说明：**
+- 所有 admin 接口需要 `role === 'admin'` 权限
+- 数据看板（`/admin/dashboard`、`/admin/stats`）后端未实现，前端使用 mock 数据
+- 未来后端建议提供 `GET /admin/dashboard` 返回完整看板数据
+
 ---
 
 ## 六、数据类型参考

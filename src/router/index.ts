@@ -24,6 +24,7 @@ const routes: RouteRecordRaw[] = [
       },
       { path: 'history', name: 'History', component: () => import('@/modules/history/page.vue') },
       { path: 'datacenter', name: 'DataCenter', component: () => import('@/modules/datacenter/page.vue') },
+      { path: 'admin', name: 'Admin', component: () => import('@/modules/admin/page.vue') },
       { path: 'login', name: 'Login', component: () => import('@/modules/auth/LoginPage.vue') },
       { path: 'register', name: 'Register', component: () => import('@/modules/auth/RegisterPage.vue') },
     ],
