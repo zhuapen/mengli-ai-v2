@@ -16,7 +16,8 @@ describe('authService', () => {
       expect(result.user).toBeDefined()
       expect(result.user.username).toBe('管理员')
       expect(result.tokens.accessToken).toBeDefined()
-      expect(getAccessToken()).toBeDefined()
+      // 验证 token 已保存到本地
+      expect(getAccessToken()).toBe(result.tokens.accessToken)
     })
 
     it('普通用户登录成功', async () => {

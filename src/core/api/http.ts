@@ -1,6 +1,10 @@
 /**
  * Axios 实例统一治理
  * 所有 HTTP 请求必须通过此实例，禁止业务模块自行创建
+ *
+ * 兼容两种后端响应格式：
+ *   A) ApiResponse 包裹：{ code, message, data, success }
+ *   B) 原始业务响应：{ token, user } 等直接返回
  */
 import axios from 'axios'
 import type { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
@@ -33,27 +37,39 @@ http.interceptors.request.use(
   },
 )
 
-/** 判断业务是否成功 */
-function isSuccessResponse(res: ApiResponse<unknown>): boolean {
-  return res.success === true && (res.code === 0 || res.code === 200)
+/**
+ * 判断响应体是否为 ApiResponse 包裹格式
+ * 条件：有 success 布尔字段 AND 有 code 数字字段
+ */
+function isApiResponseEnvelope(body: unknown): body is ApiResponse<unknown> {
+  if (typeof body !== 'object' || body === null) return false
+  const obj = body as Record<string, unknown>
+  return typeof obj.success === 'boolean' && typeof obj.code === 'number'
 }
 
-/** 响应拦截器：统一处理 ApiResponse / 401 / 业务错误 / 网络错误 */
+/** 响应拦截器：统一处理 ApiResponse / 原始响应 / 401 / 网络错误 */
 http.interceptors.response.use(
-  (response: AxiosResponse<ApiResponse<unknown>>) => {
+  (response: AxiosResponse) => {
     const body = response.data
 
-    // HTTP 200 但业务失败
-    if (!isSuccessResponse(body)) {
-      const apiError: ApiError = {
-        code: body.code,
-        message: body.message || getErrorMessage(body.code),
-        detail: body.data as string | undefined,
+    // 情况 A：响应体是 ApiResponse 包裹格式
+    if (isApiResponseEnvelope(body)) {
+      // 业务失败
+      if (!body.success || (body.code !== 0 && body.code !== 200)) {
+        const apiError: ApiError = {
+          code: body.code,
+          message: (body as ApiResponse<unknown>).message || getErrorMessage(body.code),
+          detail: (body as ApiResponse<unknown>).data as string | undefined,
+        }
+        logger.error('[HTTP] Business error', apiError)
+        return Promise.reject(apiError)
       }
-      logger.error('[HTTP] Business error', apiError)
-      return Promise.reject(apiError)
+      // 业务成功：解包，把 data 放到 response.data
+      response.data = (body as ApiResponse<unknown>).data
+      return response
     }
 
+    // 情况 B：原始业务响应（非 ApiResponse 包裹），直接透传
     return response
   },
   async (error) => {
@@ -74,7 +90,7 @@ http.interceptors.response.use(
     const errorCode = status ?? (error.code === 'ERR_NETWORK' ? ApiErrorCode.NetworkError : ApiErrorCode.UnknownError)
     const apiError: ApiError = {
       code: errorCode,
-      message: error.response?.data?.message ?? getErrorMessage(errorCode),
+      message: error.response?.data?.message ?? error.response?.data?.detail ?? getErrorMessage(errorCode),
       detail: error.response?.data?.detail,
     }
 
