@@ -1,26 +1,45 @@
 /**
  * Auth Service
  * 业务编排 + Mock/API 自动切换
- * 负责：token 管理、日志、事件通知
+ * 负责：token 管理、用户数据转换、日志
  */
 import { isFeatureEnabled } from '@/core/config/feature'
 import { logger } from '@/core/logger'
 import { setTokens, clearTokens, getAccessToken } from '@/core/auth/token'
 import { authApi } from './api'
 import { authMockApi } from './mock'
-import type { LoginParams, LoginResult, RegisterParams, RegisterResult, AuthUser } from './types'
+import type {
+  LoginParams,
+  LoginResult,
+  RegisterParams,
+  RegisterResult,
+  AuthUser,
+  BackendUser,
+} from './types'
 
 function useMock(): boolean {
   return isFeatureEnabled('enableMock')
 }
 
+/** 后端用户转换为前端用户 */
+function normalizeUser(user: BackendUser): AuthUser {
+  return {
+    id: user.id,
+    email: user.email,
+    username: user.display_name || user.email.split('@')[0],
+    role: user.role,
+    status: user.status,
+    avatar: undefined,
+  }
+}
+
 export const authService = {
   /**
    * 登录
-   * 成功后写入 token
+   * 成功后写入 token，返回转换后的用户信息
    */
   async login(params: LoginParams): Promise<LoginResult> {
-    logger.info('[AuthService] login', { account: params.account })
+    logger.info('[AuthService] login', { email: params.email })
 
     const res = useMock()
       ? await authMockApi.login(params)
@@ -34,15 +53,19 @@ export const authService = {
     setTokens(res.data.tokens.accessToken, res.data.tokens.refreshToken)
     logger.info('[AuthService] login success', { userId: res.data.user.id })
 
-    return res.data
+    // 转换用户结构
+    return {
+      user: normalizeUser(res.data.user),
+      tokens: res.data.tokens,
+    }
   },
 
   /**
    * 注册
-   * 成功后写入 token
+   * 后端注册不返回 tokens，不写入 token
    */
   async register(params: RegisterParams): Promise<RegisterResult> {
-    logger.info('[AuthService] register', { username: params.username })
+    logger.info('[AuthService] register', { email: params.email })
 
     const res = useMock()
       ? await authMockApi.register(params)
@@ -52,11 +75,13 @@ export const authService = {
       throw new Error(res.message || '注册失败')
     }
 
-    // 写入 token
-    setTokens(res.data.tokens.accessToken, res.data.tokens.refreshToken)
-    logger.info('[AuthService] register success', { userId: res.data.user.id })
+    logger.info('[AuthService] register success')
 
-    return res.data
+    // 注册不写入 token，需要管理员审批
+    return {
+      user: normalizeUser(res.data.user),
+      message: res.data.message,
+    }
   },
 
   /**
@@ -94,11 +119,11 @@ export const authService = {
         clearTokens()
         throw new Error(res.message || '获取用户信息失败')
       }
-      return res.data
+      return normalizeUser(res.data)
     }
 
     const user = await authApi.getCurrentUser()
-    return user
+    return normalizeUser(user)
   },
 
   /**
