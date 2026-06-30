@@ -3,7 +3,7 @@
  * 只负责 HTTP 请求，不写业务逻辑
  */
 import api from '@/core/api'
-import type { AdminUser, AdminUserListResult, AdminApprovalResult } from './types'
+import type { AdminUserListResult, AdminApprovalResult } from './types'
 
 export const adminApi = {
   /** 获取用户列表 */
