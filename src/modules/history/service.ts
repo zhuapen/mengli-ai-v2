@@ -7,19 +7,65 @@ import { isFeatureEnabled } from '@/core/config/feature'
 import { logger } from '@/core/logger'
 import { historyApi } from './api'
 import { historyMockApi } from './mock'
-import type { HistoryItem, HistoryQueryParams, HistoryListResult } from './types'
+import type { HistoryItem, HistoryQueryParams, HistoryListResult, HistoryType } from './types'
 
 function useMock(): boolean {
   return isFeatureEnabled('enableMock')
 }
 
+/** 安全解析 input_params，兼容对象/JSON字符串/普通字符串/空值 */
+function parseInputParams(value: unknown): Record<string, unknown> {
+  if (!value) return {}
+  if (typeof value === 'object' && value !== null) return value as Record<string, unknown>
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      if (typeof parsed === 'object' && parsed !== null) return parsed as Record<string, unknown>
+    } catch {
+      return { raw: value }
+    }
+  }
+  return {}
+}
+
+/** 从 input_params 提取可读标题 */
+function extractTitle(params: Record<string, unknown>, fallbackContent: string): string {
+  // 优先取 product
+  if (params.product && typeof params.product === 'string') return params.product
+  if (params.topic && typeof params.topic === 'string') return params.topic
+  if (params.title && typeof params.title === 'string') return params.title
+
+  // copyType + product 组合
+  if (params.copyType && params.product) {
+    return `${params.copyType} · ${params.product}`
+  }
+  if (params.copyType && typeof params.copyType === 'string') return params.copyType
+
+  // 兜底用 output_content 前 30 字
+  if (fallbackContent && fallbackContent.length > 0) {
+    return fallbackContent.substring(0, 30) + (fallbackContent.length > 30 ? '...' : '')
+  }
+
+  return '生成记录'
+}
+
+/** 后端 gen_type → 前端 HistoryType */
+function normalizeHistoryType(genType: unknown): HistoryType {
+  const valid: HistoryType[] = ['copy', 'image', 'article']
+  const str = typeof genType === 'string' ? genType.toLowerCase() : ''
+  if (valid.includes(str as HistoryType)) return str as HistoryType
+  return 'copy' // 默认归为 copy
+}
+
 /** 后端 generation_history 字段 → 前端 HistoryItem */
 function adaptHistoryItem(raw: Record<string, unknown>): HistoryItem {
+  const content = String(raw.output_content ?? '')
+  const inputParams = parseInputParams(raw.input_params)
   return {
     id: String(raw.id ?? ''),
-    type: (raw.gen_type as HistoryItem['type']) ?? 'copy',
-    title: String(raw.input_params ?? '').substring(0, 50) || '未命名记录',
-    content: String(raw.output_content ?? ''),
+    type: normalizeHistoryType(raw.gen_type),
+    title: extractTitle(inputParams, content),
+    content,
     createdAt: String(raw.created_at ?? ''),
   }
 }
