@@ -6,9 +6,10 @@ import { useArticleStore } from './store'
 
 const store = useArticleStore()
 
-const mode = ref<'outline' | 'draft'>('outline')
+const title = ref('')
+const brief = ref('')
 const extra = ref('')
-const uploadedFiles = ref<{ name: string; size: string }[]>([])
+const mode = ref<'outline' | 'draft'>('outline')
 
 const modeHint = computed(() => {
   return mode.value === 'outline'
@@ -16,24 +17,29 @@ const modeHint = computed(() => {
     : '输出完整初稿（2000-3000字），包含标题、开头、正文和结尾'
 })
 
-async function handleFileUpload() {
-  const file = new File([''], '客户需求.docx', { type: 'application/msword' })
-  await store.uploadFile(file)
-  if (store.uploadedFile) {
-    uploadedFiles.value.push(store.uploadedFile)
-  }
-}
-
-function removeFile(index: number) {
-  uploadedFiles.value.splice(index, 1)
-}
-
 async function handleGenerate() {
+  if (!title.value.trim()) {
+    alert('请输入文章标题')
+    return
+  }
+  if (!brief.value.trim()) {
+    alert('请输入客户 Brief / 需求说明')
+    return
+  }
+
+  const requirements = [
+    '写作平台：微信公众号。',
+    '请生成适合公众号发布的长文稿件，结构清晰，语气自然，避免硬广。',
+    '',
+    '客户 Brief：',
+    brief.value.trim(),
+    extra.value.trim() ? `\n补充说明：\n${extra.value.trim()}` : '',
+  ].join('\n')
+
   await store.generate({
-    title: '品牌营销文章',
+    title: title.value.trim(),
     mode: mode.value,
-    requirements: extra.value || undefined,
-    file: uploadedFiles.value[0],
+    requirements,
   })
 }
 
@@ -50,7 +56,7 @@ function handleCopy() {
       <div class="page-header-inner">
         <div>
           <h1 class="page-title">公众号写稿</h1>
-          <p class="page-desc">专业公众号文章创作 · 结构化输出</p>
+          <p class="page-desc">粘贴客户 Brief 和写作要求，一键生成适合公众号发布的文章</p>
         </div>
       </div>
     </div>
@@ -58,28 +64,20 @@ function handleCopy() {
     <div class="article-layout">
       <!-- 左侧：输入区 -->
       <div class="article-left">
-        <div class="gen-label">📎 上传客户需求文件</div>
-        <div class="article-upload" @click="handleFileUpload">
-          <div class="article-upload-icon">📄</div>
-          <div class="article-upload-text">点击或拖拽上传客户 Brief</div>
-          <div class="article-upload-hint">支持 PDF、Word、TXT</div>
-        </div>
+        <div class="gen-label">文章标题 *</div>
+        <input
+          v-model="title"
+          class="gen-input"
+          placeholder="请输入公众号文章标题，例如：如何提升小红书内容转化率"
+        />
 
-        <!-- 已上传文件列表 -->
-        <div v-if="uploadedFiles.length > 0" class="article-file-list">
-          <div
-            v-for="(file, index) in uploadedFiles"
-            :key="index"
-            class="article-file-item"
-          >
-            <span class="file-icon">📎</span>
-            <div class="file-info">
-              <div class="file-name">{{ file.name }}</div>
-              <div class="file-size">{{ file.size }}</div>
-            </div>
-            <button class="file-remove" @click="removeFile(index)">×</button>
-          </div>
-        </div>
+        <div class="gen-label" style="margin-top: 24px">客户 Brief / 需求说明 *</div>
+        <textarea
+          v-model="brief"
+          class="gen-textarea"
+          placeholder="请粘贴客户需求、产品信息、目标人群、核心卖点、文章方向等内容"
+          style="min-height: 160px"
+        />
 
         <div class="gen-label" style="margin-top: 24px">生成模式</div>
         <div class="article-mode-tabs">
@@ -104,7 +102,7 @@ function handleCopy() {
         <textarea
           v-model="extra"
           class="gen-textarea"
-          placeholder="如有特殊要求可在此补充，如：语气轻松活泼、字数1500字左右..."
+          placeholder="例如：语气亲切，结构清晰，适合品牌方阅读，字数 1500 字左右"
           style="min-height: 100px"
         />
 
@@ -113,7 +111,7 @@ function handleCopy() {
           :disabled="store.loading"
           @click="handleGenerate"
         >
-          {{ store.loading ? '生成中...' : '生成写稿' }}
+          {{ store.loading ? '生成中...' : '生成公众号文章' }}
         </button>
       </div>
 
@@ -134,7 +132,7 @@ function handleCopy() {
         </div>
 
         <div v-else class="article-output empty">
-          点击「生成写稿」开始创作
+          点击「生成公众号文章」开始创作
         </div>
 
         <!-- 操作按钮 -->
@@ -211,92 +209,25 @@ function handleCopy() {
   margin-bottom: 12px;
 }
 
-/* Upload */
-.article-upload {
-  padding: 32px;
-  border: 2px dashed var(--ds-color-gray-200);
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s;
-  border-radius: 8px;
+/* Input */
+.gen-input {
+  width: 100%;
+  padding: 16px;
+  border: 2px solid var(--ds-color-gray-200);
+  font-size: 15px;
+  font-family: var(--ds-font-family);
+  outline: none;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
-.article-upload:hover {
+.gen-input:focus {
   border-color: var(--ds-color-primary);
-  background: var(--ds-color-gray-50);
+  box-shadow: 0 0 0 3px rgba(244, 132, 95, 0.2);
 }
 
-.article-upload-icon {
-  font-size: 36px;
-  margin-bottom: 8px;
-}
-
-.article-upload-text {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.article-upload-hint {
-  font-size: 12px;
-  color: var(--ds-color-gray-400);
-}
-
-/* File List */
-.article-file-list {
-  margin-top: 12px;
-}
-
-.article-file-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: var(--ds-color-gray-50);
-  border-radius: 8px;
-  margin-top: 8px;
-}
-
-.file-icon {
-  font-size: 20px;
-}
-
-.file-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.file-name {
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.file-size {
-  font-size: 11px;
-  color: var(--ds-color-gray-400);
-}
-
-.file-remove {
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: #f5f5f5;
-  border-radius: 50%;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.file-remove:hover {
-  background: #fee2e2;
-  color: #ef4444;
+.gen-input::placeholder {
+  color: var(--ds-color-gray-300);
 }
 
 /* Mode Tabs */
