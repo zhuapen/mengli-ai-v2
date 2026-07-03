@@ -6,23 +6,42 @@
 
 ## 一、通用响应结构
 
-所有接口统一返回 `ApiResponse<T>` 包裹：
+前端 API 层兼容两种后端响应格式：
+
+### 格式 A：标准 ApiResponse 包裹
 
 ```typescript
 interface ApiResponse<T> {
   code: number      // 0 = 成功，非 0 = 错误码
   message: string   // 用户可读提示
-  data: T           // 业务数据，无数据时用 null
+  data: T           // 业务数据
   success: boolean  // true = 业务成功，false = 业务失败
 }
 ```
 
+### 格式 B：原始业务响应
+
+部分接口（如 Auth 登录）直接返回业务数据，无 ApiResponse 包裹：
+
+```json
+{
+  "token": "session_token",
+  "user": { "id": "...", "email": "..." }
+}
+```
+
+### 前端处理逻辑
+
+`src/core/api/http.ts` 响应拦截器自动判断：
+
+- **如果响应体有 `success`（boolean）和 `code`（number）字段** → 按 ApiResponse 处理，成功时解包 `data`，失败时抛 `ApiError`
+- **否则** → 直接透传原始业务响应
+
 **约定：**
 - `success=true` 表示业务成功
 - `success=false` 表示业务失败
-- `code=0` 表示成功
+- `code=0` 或 `code=200` 表示成功
 - `message` 用于展示给用户或记录日志
-- `data` 必须始终存在；无返回数据时使用 `null` 或空对象
 
 ---
 
@@ -82,22 +101,32 @@ interface PaginationResult<T> {
 
 ## 四、鉴权结构
 
-### 登录返回
+### Token 说明
 
-```typescript
-interface AuthTokens {
-  accessToken: string
-  refreshToken?: string
+后端登录返回平级 `token` 字段（非 `tokens.accessToken`）：
+
+```json
+{
+  "token": "session_token",
+  "user": { ... }
 }
 ```
 
+前端 service 层将 `token` 转换为内部 `AuthTokens.accessToken`，后续请求通过 `Authorization: Bearer <token>` 携带登录态。
+
+后端当前无 `refreshToken`。
+
 ### Token 使用规则
 
-- `accessToken` 放入 `Authorization` header
-- 格式：`Bearer <accessToken>`
+- 登录后保存后端返回的 `token`
+- 格式：`Authorization: Bearer <token>`
 - token 由 `src/core/auth/token.ts` 统一管理
 - 401 时自动清理 token 并跳转 `/login`
 - `/auth/me` 用于页面刷新后恢复用户态
+
+### Mock 说明
+
+Auth mock 为贴近真实后端，login 返回 `{ token, user }`，register 返回 `{ user, message }`，getCurrentUser 返回 `BackendUser`。service 层统一负责转换为前端内部结构。
 
 ---
 
@@ -107,18 +136,85 @@ interface AuthTokens {
 
 | Method | Path | Request Body | Response Data | 需要登录 |
 |--------|------|-------------|---------------|----------|
-| POST | /auth/login | `{ account: string, password: string }` | `LoginResult` | ❌ |
-| POST | /auth/register | `{ username: string, account: string, password: string }` | `RegisterResult` | ❌ |
-| POST | /auth/logout | — | `null` | ✅ |
-| GET | /auth/me | — | `AuthUser` | ✅ |
+| POST | /auth/login | `{ email, password }` | `{ token, user }` | ❌ |
+| POST | /auth/register | `{ email, password }` | `{ user, message }` | ❌ |
+| POST | /auth/logout | — | — | ✅ |
+| GET | /auth/me | — | `BackendUser` | ✅ |
 
-**LoginResult:**
-```typescript
+**POST /auth/login 请求：**
+```json
 {
-  user: { id: string, username: string, avatar?: string, role: string }
-  tokens: { accessToken: string, refreshToken?: string }
+  "email": "user@example.com",
+  "password": "password"
 }
 ```
+
+**POST /auth/login 真实后端响应：**
+```json
+{
+  "token": "session_token",
+  "user": {
+    "id": "...",
+    "email": "user@example.com",
+    "display_name": "用户名",
+    "role": "admin",
+    "status": "approved"
+  }
+}
+```
+
+说明：
+- 后端返回平级 `token`，不返回 `tokens.accessToken`
+- 前端 service 层将 `token` 转换为内部 `AuthTokens.accessToken`
+- 后端当前无 `refreshToken`
+- 登录使用 `email` + `password`，不是 `account`
+
+**POST /auth/register 请求：**
+```json
+{
+  "email": "user@example.com",
+  "password": "password"
+}
+```
+
+**POST /auth/register 真实后端响应：**
+```json
+{
+  "user": {
+    "id": "...",
+    "email": "user@example.com",
+    "display_name": "用户名",
+    "role": "user",
+    "status": "pending"
+  },
+  "message": "注册成功，等待管理员审批"
+}
+```
+
+说明：
+- 注册接口不返回 `token`
+- 注册成功后前端不自动登录
+- 用户需要等待管理员审批后再登录
+
+**GET /auth/me 请求头：**
+```
+Authorization: Bearer <token>
+```
+
+**GET /auth/me 真实后端响应：**
+```json
+{
+  "id": "...",
+  "email": "user@example.com",
+  "display_name": "用户名",
+  "role": "admin",
+  "status": "approved"
+}
+```
+
+说明：
+- 前端 service 层将 `display_name` 转换为前端内部 `username`
+- 如果 `display_name` 为空，则使用 email 前缀作为 `username`
 
 ### Copy 模块
 
@@ -205,6 +301,22 @@ interface AuthTokens {
 | GET | /home/overview | — | `HomeOverview` | ✅ |
 | GET | /home/recent | — | `HomeRecentItem[]` | ✅ |
 | GET | /home/shortcuts | — | `HomeShortcut[]` | ✅ |
+
+### Admin 管理员模块
+
+| Method | Path | Request Body/Params | Response Data | 需要登录 |
+|--------|------|---------------------|---------------|----------|
+| GET | /admin/users | `?status=&keyword=` | `{ users: AdminUser[] }` | ✅ admin |
+| POST | /admin/users | `{ email, password, display_name?, role? }` | `{ message, user_id }` | ✅ admin |
+| PUT | /admin/users/:id/approve | — | `{ message }` | ✅ admin |
+| PUT | /admin/users/:id/reject | — | `{ message }` | ✅ admin |
+| PUT | /admin/users/:id/toggle | — | `{ message }` | ✅ admin |
+| DELETE | /admin/users/:id | — | `{ message }` | ✅ admin |
+
+**说明：**
+- 所有 admin 接口需要 `role === 'admin'` 权限
+- 数据看板（`/admin/dashboard`、`/admin/stats`）后端未实现，前端使用 mock 数据
+- 未来后端建议提供 `GET /admin/dashboard` 返回完整看板数据
 
 ---
 
@@ -444,14 +556,17 @@ interface HomeRecentItem {
 ### api.ts 层
 
 - 只负责 HTTP 请求，不写业务逻辑
-- 返回类型为解包后的 `T`（不暴露 `ApiResponse` 包裹）
+- http 拦截器已处理 ApiResponse 解包，api.ts 统一返回 `res.data`
+- 对于非 ApiResponse 接口（如 Auth），api.ts 直接返回后端原始数据
 - 不判断 `enableMock`
 
 ### mock.ts 层
 
-- 返回 `ApiResponse<T>` 包裹格式
 - 方法名与 api.ts 完全一致
+- Auth mock 为贴近真实后端，返回原始格式（如 `{ token, user }`）
+- 其他模块 mock 返回 `ApiResponse<T>` 包裹格式
 - 模拟延迟只在 mock.ts 中
+- service 层统一负责数据转换
 
 ### service.ts 层
 

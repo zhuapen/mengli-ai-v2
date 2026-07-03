@@ -1,101 +1,88 @@
 /**
  * Auth Mock API
- * 返回结构必须与真实 api 完全一致
+ * 模拟真实后端响应格式（无 ApiResponse 包裹）
  */
-import type { ApiResponse } from '@/core/api/types'
-import type { LoginParams, LoginResult, RegisterParams, RegisterResult, AuthUser } from './types'
+import type {
+  LoginParams,
+  BackendLoginResponse,
+  RegisterParams,
+  BackendRegisterResponse,
+  BackendUser,
+} from './types'
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-const mockAdmin: AuthUser = {
+const mockAdmin: BackendUser = {
   id: '1',
-  username: '管理员',
-  avatar: '👑',
+  email: 'admin@mengli.ai',
+  display_name: '管理员',
   role: 'admin',
+  status: 'approved',
+  is_active: true,
 }
 
-const mockUser: AuthUser = {
+const mockUser: BackendUser = {
   id: '2',
-  username: '萌力用户',
-  avatar: '👤',
+  email: 'user@mengli.ai',
+  display_name: '萌力用户',
   role: 'user',
+  status: 'approved',
+  is_active: true,
 }
 
 /** 当前已登录的 mock 用户（模块级状态） */
-let currentUser: AuthUser | null = null
+let currentUser: BackendUser | null = null
 
 export const authMockApi = {
-  async login(params: LoginParams): Promise<ApiResponse<LoginResult>> {
+  /**
+   * 登录
+   * 模拟后端返回 { token, user }，无 ApiResponse 包裹
+   */
+  async login(params: LoginParams): Promise<BackendLoginResponse> {
     await delay(800)
 
-    if (params.account === 'admin' && params.password === '123456') {
+    if (params.email === 'admin@mengli.ai' && params.password === '123456') {
       currentUser = mockAdmin
       return {
-        code: 0,
-        message: 'success',
-        success: true,
-        data: {
-          user: mockAdmin,
-          tokens: {
-            accessToken: 'mock-access-' + Date.now(),
-            refreshToken: 'mock-refresh-' + Date.now(),
-          },
-        },
+        token: 'mock-token-' + Date.now(),
+        user: mockAdmin,
       }
     }
 
-    if (params.account && params.password) {
+    if (params.email && params.password) {
       currentUser = mockUser
       return {
-        code: 0,
-        message: 'success',
-        success: true,
-        data: {
-          user: mockUser,
-          tokens: {
-            accessToken: 'mock-access-' + Date.now(),
-            refreshToken: 'mock-refresh-' + Date.now(),
-          },
-        },
+        token: 'mock-token-' + Date.now(),
+        user: mockUser,
       }
     }
 
-    return {
-      code: 401,
-      message: '用户名或密码错误',
-      success: false,
-      data: undefined as unknown as LoginResult,
-    }
+    throw new Error('邮箱或密码错误')
   },
 
-  async register(_params: RegisterParams): Promise<ApiResponse<RegisterResult>> {
+  /**
+   * 注册
+   * 模拟后端返回 { user, message }，无 tokens
+   */
+  async register(_params: RegisterParams): Promise<BackendRegisterResponse> {
     await delay(1000)
-    currentUser = mockUser
     return {
-      code: 0,
-      message: 'success',
-      success: true,
-      data: {
-        user: mockUser,
-        tokens: {
-          accessToken: 'mock-access-' + Date.now(),
-          refreshToken: 'mock-refresh-' + Date.now(),
-        },
-      },
+      user: mockUser,
+      message: '注册成功，等待管理员审批',
     }
   },
 
-  async logout(): Promise<ApiResponse<void>> {
+  /** 登出 */
+  async logout(): Promise<void> {
     await delay(300)
     currentUser = null
-    return { code: 0, message: 'success', success: true, data: undefined }
   },
 
-  async getCurrentUser(): Promise<ApiResponse<AuthUser>> {
+  /** 获取当前用户 */
+  async getCurrentUser(): Promise<BackendUser> {
     await delay(500)
-    // 返回当前已登录用户；如无记录则返回默认用户（避免 restoreSession 失败）
-    return { code: 0, message: 'success', success: true, data: currentUser ?? mockUser }
+    return currentUser ?? mockUser
   },
 }

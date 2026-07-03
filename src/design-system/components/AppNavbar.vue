@@ -53,6 +53,14 @@ const handleLogout = async () => {
         >
           {{ link.name }}
         </router-link>
+        <router-link
+          v-if="userStore.isLoggedIn && userStore.role === 'admin'"
+          to="/admin"
+          class="nav-link nav-link-admin"
+          :class="{ active: isActive('Admin') }"
+        >
+          ⚙️ 管理后台
+        </router-link>
       </div>
     </div>
 

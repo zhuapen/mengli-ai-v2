@@ -31,14 +31,28 @@ function getTypeName(type: string): string {
 }
 
 function formatDate(dateStr: string): string {
+  if (!dateStr) return '时间未知'
+
   const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return '时间未知'
+
   const now = new Date()
   const diff = now.getTime() - date.getTime()
+  if (diff < 0) return '时间未知'
+
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  if (days === 0) return '今天 ' + dateStr.split(' ')[1]
-  if (days === 1) return '昨天 ' + dateStr.split(' ')[1]
+
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`
+
+  if (days === 0) return `今天 ${time}`
+  if (days === 1) return `昨天 ${time}`
   if (days < 7) return `${days}天前`
-  return dateStr
+
+  const y = date.getFullYear()
+  const m = pad(date.getMonth() + 1)
+  const d = pad(date.getDate())
+  return `${y}-${m}-${d} ${time}`
 }
 
 const expandedId = ref<string | null>(null)

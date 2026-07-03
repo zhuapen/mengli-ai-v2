@@ -93,3 +93,42 @@ ssh root@YOUR_SERVER_IP "sudo systemctl reload nginx"
 - [ ] 无控制台报错
 - [ ] API 请求正常（Network 面板）
 - [ ] 用户反馈无异常
+
+---
+
+## v0.1.0 上线结果（2026-06-30）
+
+### 构建检查
+- [x] `npm run build` — 0 error
+- [x] `npx vue-tsc --noEmit` — 0 error
+- [x] `npx eslint src/` — 0 error
+- [x] `npm run test:unit` — 60 passed
+- [x] `npm run test:e2e` — 13 passed
+- [x] `dist/` 目录已生成
+
+### 腾讯云部署
+- [x] CVM 正常运行（43.128.56.10）
+- [x] Nginx 已切到 V2 前端
+- [x] `nginx -t` 通过
+- [x] V2 dist 已上传到 `/var/www/mengli-ai-platform/dist/`
+- [x] 旧前端已备份到 `/var/backups/mengli/`
+- [x] SPA fallback 正常
+
+### 线上冒烟
+- [x] 首页 200
+- [x] /login 200
+- [x] /register 200
+- [x] /copy 200
+- [x] /image 200
+- [x] /media 200
+- [x] /history 200
+- [x] /assets 200
+- [x] /plugin 200
+- [x] /datacenter 200
+- [x] /api/ 代理正常（404 来自后端）
+- [x] /api/auth/login 代理正常（422 来自后端）
+
+### 待办
+- [ ] 真实后端接口联调
+- [ ] Mock → API 切换验证
+- [ ] 登录全流程验证（需后端就绪）

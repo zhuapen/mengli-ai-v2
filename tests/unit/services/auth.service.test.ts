@@ -10,34 +10,49 @@ describe('authService', () => {
   describe('login', () => {
     it('登录成功后写入 token', async () => {
       const result = await authService.login({
-        account: 'admin',
+        email: 'admin@mengli.ai',
         password: '123456',
       })
       expect(result.user).toBeDefined()
       expect(result.user.username).toBe('管理员')
       expect(result.tokens.accessToken).toBeDefined()
-      expect(getAccessToken()).toBeDefined()
+      // 验证 token 已保存到本地
+      expect(getAccessToken()).toBe(result.tokens.accessToken)
     })
 
     it('普通用户登录成功', async () => {
       const result = await authService.login({
-        account: 'user',
+        email: 'user@mengli.ai',
         password: 'pass',
       })
       expect(result.user).toBeDefined()
       expect(result.tokens.accessToken).toBeDefined()
     })
 
-    it('空账号密码抛出错误', async () => {
+    it('空邮箱密码抛出错误', async () => {
       await expect(
-        authService.login({ account: '', password: '' }),
+        authService.login({ email: '', password: '' }),
       ).rejects.toThrow()
+    })
+  })
+
+  describe('register', () => {
+    it('注册成功后不写入 token', async () => {
+      clearTokens()
+      const result = await authService.register({
+        email: 'new@mengli.ai',
+        password: '123456',
+      })
+      expect(result.user).toBeDefined()
+      expect(result.message).toBeDefined()
+      // 注册不应写入 token
+      expect(getAccessToken()).toBeNull()
     })
   })
 
   describe('logout', () => {
     it('登出后清理 token', async () => {
-      await authService.login({ account: 'admin', password: '123456' })
+      await authService.login({ email: 'admin@mengli.ai', password: '123456' })
       expect(getAccessToken()).toBeDefined()
 
       await authService.logout()
@@ -51,6 +66,7 @@ describe('authService', () => {
       expect(user).toBeDefined()
       expect(user.id).toBeDefined()
       expect(user.username).toBeDefined()
+      expect(user.email).toBeDefined()
     })
   })
 
@@ -61,7 +77,7 @@ describe('authService', () => {
     })
 
     it('有 token 时返回 true', async () => {
-      await authService.login({ account: 'admin', password: '123456' })
+      await authService.login({ email: 'admin@mengli.ai', password: '123456' })
       expect(authService.hasToken()).toBe(true)
     })
   })
