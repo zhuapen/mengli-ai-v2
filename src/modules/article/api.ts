@@ -12,10 +12,15 @@ import type {
   ArticleHistoryResult,
 } from './types'
 
+/** AI 生成接口超时时间（120秒），AI 生成耗时较长 */
+const AI_GENERATION_TIMEOUT = 120_000
+
 export const articleApi = {
   /** 生成文章 */
   generate(params: ArticleGenerateParams): Promise<ArticleGenerateResult> {
-    return api.post<ArticleGenerateResult>('/article/generate', params)
+    return api.post<ArticleGenerateResult>('/article/generate', params, {
+      timeout: AI_GENERATION_TIMEOUT,
+    })
   },
 
   /** 上传文件 */
