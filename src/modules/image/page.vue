@@ -129,7 +129,7 @@ function handleRetry() {
           :disabled="store.loading || !currentPrompt.trim()"
           @click="handleGenerate"
         >
-          {{ store.loading ? '生成中...' : '生成图片' }}
+          {{ store.loading ? '生成中...' : '图片生成接入中' }}
         </button>
       </div>
 
@@ -143,7 +143,7 @@ function handleRetry() {
           <DsError
             v-else-if="store.error && !store.outputUrl"
             :message="store.error"
-            @retry="handleRetry"
+            @retry="store.error === '图片生成功能接入中' ? undefined : handleRetry"
           />
 
           <div v-else-if="store.outputUrl" class="gen-result-container">
@@ -160,7 +160,7 @@ function handleRetry() {
 
           <div v-else class="gen-placeholder">
             <div class="icon">🎨</div>
-            <p>输入描述后点击生成按钮</p>
+            <p>图片生成接口正在对接中，完成后可在这里输入提示词生成图片。</p>
           </div>
         </div>
       </div>
