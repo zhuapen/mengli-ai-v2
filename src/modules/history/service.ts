@@ -29,7 +29,13 @@ function parseInputParams(value: unknown): Record<string, unknown> {
 }
 
 /** 从 input_params 提取可读标题 */
-function extractTitle(params: Record<string, unknown>, fallbackContent: string): string {
+function extractTitle(params: Record<string, unknown>, fallbackContent: string, genType: string): string {
+  // image_gen 记录：优先使用 prompt
+  if (genType === 'image' && params.prompt && typeof params.prompt === 'string') {
+    return params.prompt.length > 30 ? params.prompt.substring(0, 30) + '...' : params.prompt
+  }
+  if (genType === 'image') return '图片生成'
+
   // 优先取 product
   if (params.product && typeof params.product === 'string') return params.product
   if (params.topic && typeof params.topic === 'string') return params.topic
@@ -51,20 +57,30 @@ function extractTitle(params: Record<string, unknown>, fallbackContent: string):
 
 /** 后端 gen_type → 前端 HistoryType */
 function normalizeHistoryType(genType: unknown): HistoryType {
-  const valid: HistoryType[] = ['copy', 'image', 'article']
   const str = typeof genType === 'string' ? genType.toLowerCase() : ''
+  // image_gen 映射为 image
+  if (str === 'image_gen') return 'image'
+  const valid: HistoryType[] = ['copy', 'image', 'article']
   if (valid.includes(str as HistoryType)) return str as HistoryType
   return 'copy' // 默认归为 copy
 }
 
 /** 后端 generation_history 字段 → 前端 HistoryItem */
 function adaptHistoryItem(raw: Record<string, unknown>): HistoryItem {
-  const content = String(raw.output_content ?? '')
+  const rawContent = String(raw.output_content ?? '')
   const inputParams = parseInputParams(raw.input_params)
+  const type = normalizeHistoryType(raw.gen_type)
+
+  // 处理 image_url: 前缀
+  let content = rawContent
+  if (type === 'image' && content.startsWith('image_url:')) {
+    content = content.substring('image_url:'.length)
+  }
+
   return {
     id: String(raw.id ?? ''),
-    type: normalizeHistoryType(raw.gen_type),
-    title: extractTitle(inputParams, content),
+    type,
+    title: extractTitle(inputParams, content, type),
     content,
     createdAt: String(raw.created_at ?? ''),
   }
