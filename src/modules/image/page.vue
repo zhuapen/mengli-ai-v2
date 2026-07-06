@@ -12,11 +12,11 @@ const img2imgPrompt = ref('')
 const size = ref('1024x1024')
 
 const sizeOptions = [
-  { value: '1024x1024', label: '1:1 方形' },
-  { value: '1792x1024', label: '16:9 横版' },
-  { value: '1024x1792', label: '9:16 竖版' },
-  { value: '1365x1024', label: '4:3 横版' },
-  { value: '1024x1365', label: '3:4 竖版' },
+  { value: '1024x1024', label: '1:1 方图' },
+  { value: '768x1024', label: '3:4 竖图' },
+  { value: '1024x768', label: '4:3 横图' },
+  { value: '576x1024', label: '9:16 竖版海报' },
+  { value: '1024x576', label: '16:9 横版封面' },
 ]
 
 const currentPrompt = computed(() =>
