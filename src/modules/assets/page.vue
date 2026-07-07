@@ -132,7 +132,7 @@ function getTypeName(type: string): string {
 
 <style scoped>
 .assets-page {
-  animation: pageEnter 0.6s ease;
+  animation: pageEnter 0.2s ease;
 }
 
 /* Page Header */

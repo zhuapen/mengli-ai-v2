@@ -95,7 +95,7 @@ const handleLogout = async () => {
   background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--ds-color-gray-100);
-  animation: slideDown 0.8s ease;
+  animation: slideDown 0.3s ease;
 }
 
 .nav-left {
