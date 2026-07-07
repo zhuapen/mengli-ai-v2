@@ -191,8 +191,8 @@ function isSelected(id: string): boolean {
             <DsEmpty
               v-if="store.filteredList.length === 0 && !store.loading"
               icon="📭"
-              title="暂无匹配的达人"
-              description="尝试调整筛选条件或搜索关键词"
+              title="媒体库配置中"
+              description="真实达人数据源正在接入中，接入完成后可在这里按平台、标签和关键词筛选 KOL。"
             />
           </div>
         </div>
