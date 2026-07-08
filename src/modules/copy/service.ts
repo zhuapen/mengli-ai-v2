@@ -60,8 +60,8 @@ export const copyService = {
       return await copyApi.getTemplates()
     } catch (e) {
       const msg = e instanceof Error ? e.message : '获取模板失败'
-      logger.error('[CopyService] getTemplates failed', msg)
-      throw new Error(msg)
+      logger.warn('[CopyService] getTemplates failed, returning empty', msg)
+      return []
     }
   },
 
@@ -75,8 +75,8 @@ export const copyService = {
       return await copyApi.getBrands()
     } catch (e) {
       const msg = e instanceof Error ? e.message : '获取品牌失败'
-      logger.error('[CopyService] getBrands failed', msg)
-      throw new Error(msg)
+      logger.warn('[CopyService] getBrands failed, returning empty', msg)
+      return []
     }
   },
 

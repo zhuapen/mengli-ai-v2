@@ -1,6 +1,6 @@
 :root {
   /* Font Family */
-  --ds-font-family: 'Space Grotesk', 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --ds-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 
   /* Font Size */
   --ds-font-size-xs: 11px;

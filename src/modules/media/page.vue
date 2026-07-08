@@ -433,6 +433,7 @@ function markSelected(recommendation: Recommendation) {
 .media-page {
   padding: 32px;
   color: #202124;
+  animation: pageEnter 0.2s ease;
 }
 
 .media-header,

@@ -152,7 +152,7 @@ function navigateTo(path: string) {
 
 <style scoped>
 .home-page {
-  animation: pageEnter 0.6s ease;
+  animation: pageEnter 0.2s ease;
 }
 
 /* ========== HOME HERO ========== */

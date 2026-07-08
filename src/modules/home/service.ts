@@ -14,33 +14,15 @@ function useMock(): boolean {
 
 export const homeService = {
   async getCaseStudies(): Promise<CaseStudy[]> {
-    logger.info('[HomeService] getCaseStudies')
-    try {
-      if (useMock()) {
-        const res = await homeMockApi.getCaseStudies()
-        return res.data
-      }
-      return await homeApi.getCaseStudies()
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : '获取案例失败'
-      logger.error('[HomeService] getCaseStudies failed', msg)
-      throw new Error(msg)
-    }
+    // 后端 /home/case-studies 尚未实现，直接返回空数组，避免无意义 404
+    logger.info('[HomeService] getCaseStudies skipped (endpoint not implemented)')
+    return []
   },
 
   async getAboutItems(): Promise<AboutItem[]> {
-    logger.info('[HomeService] getAboutItems')
-    try {
-      if (useMock()) {
-        const res = await homeMockApi.getAboutItems()
-        return res.data
-      }
-      return await homeApi.getAboutItems()
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : '获取关于我们失败'
-      logger.error('[HomeService] getAboutItems failed', msg)
-      throw new Error(msg)
-    }
+    // 后端 /home/about 尚未实现，直接返回空数组，避免无意义 404
+    logger.info('[HomeService] getAboutItems skipped (endpoint not implemented)')
+    return []
   },
 
   async getOverview(): Promise<HomeOverview> {

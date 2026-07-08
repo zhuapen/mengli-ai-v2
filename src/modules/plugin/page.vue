@@ -86,7 +86,7 @@ function goBack() {
 
 <style scoped>
 .plugin-page {
-  animation: pageEnter 0.6s ease;
+  animation: pageEnter 0.2s ease;
 }
 
 /* Page Header */
