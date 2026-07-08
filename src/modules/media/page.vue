@@ -1,694 +1,773 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import DsLoading from '@/design-system/components/DsLoading.vue'
 import DsError from '@/design-system/components/DsError.vue'
 import DsEmpty from '@/design-system/components/DsEmpty.vue'
 import { useMediaStore } from './store'
+import type { BriefAnalysis, CreatorProfile, MediaProject, Recommendation } from './types'
 
 const store = useMediaStore()
 
+const briefInput = ref('')
+const provider = ref<'codex' | 'deepseek' | 'kimi' | 'compatible'>('codex')
+const revisionNotes = ref<string[]>([])
+
 onMounted(() => {
-  store.init()
+  void store.loadBaseData()
 })
 
-const currentView = ref<'home' | 'database' | 'project'>('home')
+const currentCreators = computed(() => {
+  if (store.currentView === 'candidate') return store.candidateCreators
+  return store.mediaCreators
+})
 
-function formatFollowers(num: number): string {
-  if (num >= 10000) return (num / 10000).toFixed(1) + '万'
-  return num.toString()
+const businessConditions = computed(() => {
+  const analysis = store.activeAnalysis
+  if (!analysis) return []
+
+  return [
+    ['平台', analysis.platforms.join('、')],
+    ['推荐数量', `${analysis.targetCount} 个`],
+    ['单个预算', formatBudget(analysis.budgetMin, analysis.budgetMax)],
+    ['合作形式', analysis.cooperationForm.join('、')],
+    ['达人方向', analysis.creatorTypes.join('、')],
+    ['人群标签', analysis.audienceTags.join('、')],
+    ['排除项', analysis.excludedTags.join('、') || '无'],
+    ['数据门槛', formatThresholds(analysis)],
+  ].filter(([, value]) => value && value !== '未写明')
+})
+
+const detailSections = computed(() => {
+  const analysis = store.activeAnalysis
+  if (!analysis) return []
+
+  return [
+    { title: '内容切入', items: analysis.contentAngles },
+    { title: '搜索词', items: analysis.searchKeywords },
+    { title: '近义词', items: analysis.synonymKeywords },
+    { title: '产品词补充搜索', items: analysis.productKeywords },
+    { title: '硬性要求', items: analysis.hardRequirements },
+    { title: '可放宽条件', items: analysis.flexibleRequirements },
+    { title: '蒲公英主类目', items: analysis.pgyFilterPlan.primaryCategories },
+    { title: '蒲公英细分类目', items: analysis.pgyFilterPlan.subCategories },
+    { title: '系统找号方式', items: analysis.pgyFilterPlan.validationWarnings },
+  ].filter(section => section.items.length > 0)
+})
+
+function formatNumber(value?: number): string {
+  if (value === undefined) return '-'
+  return value.toLocaleString('zh-CN')
 }
 
-function getEngagementLevel(rate: number): string {
-  if (rate >= 5) return 'high'
-  if (rate >= 3) return 'mid'
-  return 'low'
-}
-
-const selectedKOLs = ref<string[]>([])
-function toggleSelectKOL(id: string) {
-  const index = selectedKOLs.value.indexOf(id)
-  if (index === -1) {
-    selectedKOLs.value.push(id)
-  } else {
-    selectedKOLs.value.splice(index, 1)
+function formatFollowers(value: number): string {
+  if (value >= 10000) {
+    return `${(value / 10000).toFixed(1)}万`
   }
+
+  return formatNumber(value)
 }
 
-function isSelected(id: string): boolean {
-  return selectedKOLs.value.includes(id)
+function formatCurrency(value?: number): string {
+  if (value === undefined) return '-'
+  return `¥${value.toLocaleString('zh-CN')}`
+}
+
+function formatBudget(min?: number, max?: number): string {
+  if (min === undefined && max === undefined) return '未写明'
+  if (min !== undefined && max !== undefined) return `${formatCurrency(min)}-${formatCurrency(max)}`
+  if (min !== undefined) return `不低于 ${formatCurrency(min)}`
+  return `不高于 ${formatCurrency(max)}`
+}
+
+function formatThresholds(analysis: BriefAnalysis): string {
+  const thresholds = []
+  if (analysis.dataThresholds.cpmMax !== undefined) thresholds.push(`CPM < ${analysis.dataThresholds.cpmMax}`)
+  if (analysis.dataThresholds.cpeMax !== undefined) thresholds.push(`CPE < ${analysis.dataThresholds.cpeMax}`)
+  return thresholds.join('、') || '未写明'
+}
+
+function formatDate(value?: string): string {
+  if (!value) return '未记录'
+  return value.slice(0, 10)
+}
+
+function formatTitleStatus(creator: CreatorProfile): string {
+  if (creator.titleStatus === 'collected') return `已采集标题（${creator.titlesCollected}条）`
+  if (creator.titleStatus === 'partial') return `标题不足（${creator.titlesCollected}/30）`
+  if (creator.titleStatus === 'missing') return '未采集标题'
+  return creator.titleError ?? '标题采集失败'
+}
+
+function formatMetricStatus(creator: CreatorProfile): string {
+  if (creator.metricStatus === 'official') return '已采集官网指标'
+  if (creator.metricStatus === 'official_unavailable') return '官网暂无数据'
+  if (creator.metricStatus === 'partial') return creator.metricError ?? '官网指标部分缺失'
+  return creator.metricError ?? '指标采集失败'
+}
+
+function updateKeyword(event: Event) {
+  store.updateFilters({ keyword: (event.target as HTMLInputElement).value })
+}
+
+function updatePlatform(event: Event) {
+  store.updateFilters({ platform: (event.target as HTMLSelectElement).value })
+}
+
+function updateEntryStatus(event: Event) {
+  store.updateFilters({ entryStatus: (event.target as HTMLSelectElement).value })
+}
+
+function analyzeBrief() {
+  if (!briefInput.value.trim()) {
+    store.setError('请先粘贴 brief')
+    return
+  }
+
+  void store.analyzeBrief({
+    brief: briefInput.value,
+    provider: provider.value,
+    revisionNotes: revisionNotes.value.filter(Boolean),
+  })
+}
+
+function addRevisionNote() {
+  revisionNotes.value = [...revisionNotes.value, '']
+}
+
+function updateRevisionNote(index: number, event: Event) {
+  revisionNotes.value[index] = (event.target as HTMLTextAreaElement).value
+}
+
+function startCollection() {
+  void store.startCollection()
+}
+
+function openProject(project: MediaProject) {
+  briefInput.value = project.brief
+  void store.openProject(project)
+}
+
+function markSelected(recommendation: Recommendation) {
+  store.markClientSelected(recommendation.id)
 }
 </script>
 
 <template>
   <div class="media-page">
-    <!-- Page Header -->
-    <div class="page-header">
-      <div class="page-header-inner">
+    <section class="media-header">
+      <div>
+        <p class="eyebrow">Media KOL</p>
+        <h1 class="page-title">智能媒体库</h1>
+        <p>从 brief 确认选号方向，再进入候选库、推荐结果和可复用媒体库。</p>
+      </div>
+      <div class="media-nav">
+        <button :class="{ active: store.currentView === 'home' }" @click="store.navigate('home')">首页</button>
+        <button :class="{ active: store.currentView === 'projects' }" @click="store.navigate('projects')">项目管理</button>
+        <button :class="{ active: store.currentView === 'candidate' }" @click="store.openLibrary('candidate')">候选库</button>
+        <button :class="{ active: store.currentView === 'library' }" @click="store.openLibrary('library')">媒体库</button>
+      </div>
+    </section>
+
+    <DsError v-if="store.error" class="page-error" :message="store.error" @retry="store.setError(null)" />
+
+    <section v-if="store.currentView === 'home'" class="entry-grid">
+      <button class="entry-card" @click="store.navigate('projects')">
+        <span>PM</span>
+        <strong>项目管理</strong>
+        <em>新建 brief、确认选号方向、启动采集和查看推荐。</em>
+      </button>
+      <button class="entry-card" @click="store.openLibrary('candidate')">
+        <span>CD</span>
+        <strong>候选库</strong>
+        <em>所有采集账号先进入候选库，等待规则筛选和标题复核。</em>
+      </button>
+      <button class="entry-card" @click="store.openLibrary('library')">
+        <span>ML</span>
+        <strong>媒体库</strong>
+        <em>仅沉淀已补返点和联系方式的可复用达人。</em>
+      </button>
+    </section>
+
+    <section v-else-if="store.currentView === 'projects'" class="panel">
+      <div class="panel-heading">
         <div>
-          <h1 class="page-title">智能媒体库</h1>
-          <p class="page-desc">先选媒体库或项目管理，再按 brief 确认需求、生成推荐结果</p>
+          <p class="eyebrow">Project Management</p>
+          <h2>项目管理</h2>
+          <p>项目改成横排列表，便于快速查看历史项目和进入结果。</p>
+        </div>
+        <button class="primary" @click="store.navigate('project-detail')">新建项目</button>
+      </div>
+
+      <div class="project-table">
+        <div class="project-row project-head">
+          <span>项目</span>
+          <span>品牌</span>
+          <span>预算/数量</span>
+          <span>平台</span>
+          <span>状态</span>
+          <span>操作</span>
+        </div>
+        <button v-for="project in store.projects" :key="project.id" class="project-row" @click="openProject(project)">
+          <strong>{{ project.name }}</strong>
+          <span>{{ project.brand }}</span>
+          <span>{{ formatBudget(project.budgetMin, project.budgetMax) }} / {{ project.targetCount }}个</span>
+          <span>{{ project.platforms.join('、') }}</span>
+          <span>{{ project.status }}</span>
+          <span class="row-link">查看</span>
+        </button>
+      </div>
+    </section>
+
+    <section v-else-if="store.currentView === 'library' || store.currentView === 'candidate'" class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">{{ store.currentView === 'library' ? 'Media Library' : 'Candidate Library' }}</p>
+          <h2>{{ store.currentView === 'library' ? '媒体库' : '候选库' }}</h2>
+          <p>
+            {{
+              store.currentView === 'library'
+                ? '只展示已补返点和联系方式的可复用达人。'
+                : '采集账号先进入候选库，候选不自动沉淀进媒体库。'
+            }}
+          </p>
+        </div>
+        <button class="secondary" @click="store.navigate('projects')">去项目管理</button>
+      </div>
+
+      <div class="filters">
+        <select :value="store.filters.platform" @change="updatePlatform">
+          <option v-for="item in store.platforms" :key="item" :value="item">{{ item }}</option>
+        </select>
+        <select :value="store.filters.entryStatus" @change="updateEntryStatus">
+          <option>全部入库状态</option>
+          <option>正式入库</option>
+          <option>候选库</option>
+          <option>待修复</option>
+        </select>
+        <input :value="store.filters.keyword" placeholder="搜索达人/标签/人设" @input="updateKeyword" />
+        <button class="secondary" @click="store.refreshCreators">刷新列表</button>
+      </div>
+
+      <DsLoading v-if="store.loading" text="正在加载媒体数据..." />
+      <div v-else class="creator-table">
+        <div class="creator-row creator-head">
+          <span>达人昵称</span>
+          <span>入库状态</span>
+          <span>小红书号</span>
+          <span>蒲公英主页</span>
+          <span>报价</span>
+          <span>数据中位数</span>
+          <span>成本指标</span>
+          <span>状态</span>
+          <span>价格/数据更新</span>
+          <span>商务</span>
+        </div>
+        <div v-for="creator in currentCreators" :key="creator.id" class="creator-row">
+          <span class="creator-name">
+            <b>{{ creator.nickname }}</b>
+            <small>粉丝数：{{ formatFollowers(creator.followers) }}</small>
+          </span>
+          <span><em class="pill">{{ creator.entryStatus }}</em></span>
+          <span>{{ creator.xhsId }}</span>
+          <span><a :href="creator.pgyHomeUrl" target="_blank" rel="noreferrer">打开主页</a></span>
+          <span>
+            图文 {{ formatCurrency(creator.imageQuote) }}<br />
+            视频 {{ formatCurrency(creator.videoQuote) }}
+          </span>
+          <span>
+            曝光：{{ formatNumber(creator.metrics.exposureMedian) }}<br />
+            阅读：{{ formatNumber(creator.metrics.readMedian) }}<br />
+            互动：{{ formatNumber(creator.metrics.interactionMedian) }}
+          </span>
+          <span>
+            CPM：{{ formatNumber(creator.metrics.estimatedCpm) }}<br />
+            阅读：{{ formatNumber(creator.metrics.estimatedReadUnitPrice) }}<br />
+            互动：{{ formatNumber(creator.metrics.estimatedInteractionUnitPrice) }}
+          </span>
+          <span class="status-stack">
+            <em class="ok">{{ formatMetricStatus(creator) }}</em>
+            <em :class="creator.titleStatus === 'collected' ? 'ok' : 'warn'">{{ formatTitleStatus(creator) }}</em>
+          </span>
+          <span>
+            价格：{{ formatDate(creator.quoteUpdatedAt) }}<br />
+            数据：{{ formatDate(creator.dataUpdatedAt) }}
+          </span>
+          <span>
+            返点：{{ creator.rebatePercent ?? '-' }}<br />
+            联系：{{ creator.contact ?? '-' }}
+          </span>
         </div>
       </div>
-    </div>
+      <DsEmpty v-if="!store.loading && currentCreators.length === 0" title="暂无达人" description="调整筛选或导入媒体数据。" />
+    </section>
 
-    <!-- 入口视图 -->
-    <div v-if="currentView === 'home'" class="workbench-shell">
-      <section class="find-view">
-        <div class="entry-grid">
-          <button class="entry-card" @click="currentView = 'database'">
-            <div class="entry-mark">DB</div>
-            <div class="entry-title">媒体库</div>
-            <div class="entry-desc">
-              沉淀已选优质达人、导入账号，并支持标签、报价、返点筛选和人工修正。
-            </div>
-          </button>
-          <button class="entry-card" @click="currentView = 'project'">
-            <div class="entry-mark">PM</div>
-            <div class="entry-title">项目管理</div>
-            <div class="entry-desc">
-              新建 brief 找号，或回看过去项目的推荐名单、系统判断、反馈记录和导出结果。
-            </div>
-          </button>
-        </div>
-      </section>
-    </div>
-
-    <!-- 媒体库视图 -->
-    <div v-else-if="currentView === 'database'" class="workbench-shell">
-      <div class="workbench-panel">
-        <!-- 顶部操作栏 -->
-        <div class="view-topbar">
+    <section v-else class="project-detail">
+      <div class="brief-panel">
+        <div class="panel-heading compact">
           <div>
-            <div class="panel-kicker">Media Library</div>
-            <div class="view-title">媒体库</div>
-            <div class="view-desc">只展示已选优质达人和导入账号，普通采集候选不会自动进入媒体库。</div>
+            <p class="eyebrow">Project Brief</p>
+            <h2>输入 brief</h2>
           </div>
-          <div class="workbench-top-actions">
-            <button class="ghost-btn">导入 Excel/CSV</button>
-            <button class="primary-btn" @click="currentView = 'project'">去项目管理</button>
+          <button class="secondary" @click="store.navigate('projects')">返回项目</button>
+        </div>
+        <textarea v-model="briefInput" placeholder="粘贴客户 brief，系统会先拆解选号方向。" />
+        <div class="provider-row">
+          <button :class="{ active: provider === 'codex' }" @click="provider = 'codex'">Codex</button>
+          <button :class="{ active: provider === 'deepseek' }" @click="provider = 'deepseek'">DeepSeek</button>
+          <button :class="{ active: provider === 'kimi' }" @click="provider = 'kimi'">Kimi</button>
+          <button :class="{ active: provider === 'compatible' }" @click="provider = 'compatible'">兼容 API</button>
+        </div>
+        <button class="primary wide" :disabled="store.analyzing" @click="analyzeBrief">
+          {{ store.analyzing ? '拆解中...' : 'AI 拆解需求' }}
+        </button>
+      </div>
+
+      <div class="confirm-panel">
+        <div class="panel-heading compact">
+          <div>
+            <p class="eyebrow">Confirm Requirements</p>
+            <h2>确认需求</h2>
           </div>
+          <em v-if="store.activeAnalysis" class="status-badge">{{ store.activeAnalysis.sourceProvider }} 已拆解</em>
         </div>
 
-        <!-- 筛选栏 -->
-        <div class="filter-bar">
-          <div class="filter-inner">
-            <select
-              :value="store.selectedPlatform"
-              class="compact-select"
-              @change="store.setPlatform(($event.target as HTMLSelectElement).value)"
-            >
-              <option v-for="p in store.platforms" :key="p" :value="p">
-                {{ p === '全部' ? '全部平台' : p }}
-              </option>
-            </select>
+        <div v-if="!store.activeAnalysis" class="empty-box">粘贴 brief 后点击“AI 拆解需求”，这里会显示业务确认摘要。</div>
+        <template v-else>
+          <div class="summary-box">
+            <b>选号结论</b>
+            <p>{{ store.activeAnalysis.summary }}</p>
+          </div>
 
-            <input
-              v-model="store.keyword"
-              class="compact-input"
-              placeholder="搜索达人/标签/人设"
-            />
-
-            <div class="filter-sep" />
-
-            <div class="filter-tags">
-              <button
-                v-for="tag in store.tags"
-                :key="tag"
-                class="filter-chip"
-                :class="{ active: store.selectedTags.includes(tag) }"
-                @click="store.toggleTag(tag)"
-              >
-                {{ tag }}
-              </button>
+          <div class="condition-grid">
+            <div v-for="[label, value] in businessConditions" :key="label" class="condition-item">
+              <span>{{ label }}</span>
+              <strong>{{ value }}</strong>
             </div>
+          </div>
 
-            <button v-if="selectedKOLs.length > 0" class="cart-btn">
-              已选 <span class="badge">{{ selectedKOLs.length }}</span>
+          <div class="question-box">
+            <div class="question-head">
+              <b>需要确认</b>
+              <span>{{ store.activeAnalysis.questions.length }} 项</span>
+            </div>
+            <p v-if="store.activeAnalysis.questions.length === 0">可直接开始找号。</p>
+            <ol v-else>
+              <li v-for="question in store.activeAnalysis.questions" :key="question">{{ question }}</li>
+            </ol>
+          </div>
+
+          <div class="revision-box">
+            <b>确认与修正</b>
+            <div v-for="(note, index) in revisionNotes" :key="index" class="revision-row">
+              <span>{{ index + 1 }}</span>
+              <textarea :value="note" placeholder="填写这一条确认或修正意见" @input="updateRevisionNote(index, $event)" />
+            </div>
+            <button class="secondary" @click="addRevisionNote">+ 添加补充意见</button>
+            <button class="primary" :disabled="store.analyzing" @click="analyzeBrief">
+              {{ store.analyzing ? '带着修正重新拆解中...' : '带着修正重新拆解' }}
             </button>
           </div>
-        </div>
 
-        <!-- 数据表格 -->
-        <div class="table-container">
-          <DsLoading v-if="store.loading && store.kolList.length === 0" text="正在加载达人数据..." />
+          <details class="detail-drawer">
+            <summary>查看完整拆解详情</summary>
+            <section v-for="section in detailSections" :key="section.title">
+              <h4>{{ section.title }}</h4>
+              <span v-for="item in section.items" :key="item" class="tag">{{ item }}</span>
+            </section>
+            <section>
+              <h4>蒲公英筛选映射</h4>
+              <p v-for="filter in store.activeAnalysis.pgyFilterPlan.mappedFilters" :key="`${filter.group}-${filter.field}`">
+                {{ filter.group }} / {{ filter.field }}：{{ filter.values.join('、') }}。{{ filter.reason }}
+              </p>
+            </section>
+          </details>
 
-          <DsError
-            v-else-if="store.error && store.kolList.length === 0"
-            :message="store.error"
-            @retry="store.init()"
-          />
-
-          <div v-else class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>达人</th>
-                  <th>平台</th>
-                  <th>粉丝数</th>
-                  <th>标签</th>
-                  <th>互动率</th>
-                  <th>报价</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="kol in store.filteredList" :key="kol.id">
-                  <td>
-                    <div class="kol-name">
-                      <div class="kol-avatar">{{ kol.avatar }}</div>
-                      <div class="kol-info">
-                        <div class="name">{{ kol.name }}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>{{ kol.platform }}</td>
-                  <td class="follower-num">{{ formatFollowers(kol.followers) }}</td>
-                  <td>
-                    <span v-for="tag in kol.tags" :key="tag" class="tag">{{ tag }}</span>
-                  </td>
-                  <td>
-                    <span class="eng" :class="getEngagementLevel(kol.engagement)">
-                      {{ kol.engagement }}%
-                    </span>
-                  </td>
-                  <td class="price">
-                    ¥{{ kol.price.toLocaleString() }}
-                    <small>/篇</small>
-                  </td>
-                  <td>
-                    <button
-                      class="add-btn"
-                      :class="{ added: isSelected(kol.id) }"
-                      @click="toggleSelectKOL(kol.id)"
-                    >
-                      {{ isSelected(kol.id) ? '已选' : '选择' }}
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <DsEmpty
-              v-if="store.filteredList.length === 0 && !store.loading"
-              icon="📭"
-              title="暂无匹配的达人"
-              description="尝试调整筛选条件或搜索关键词"
-            />
+          <div class="collection-box">
+            <button class="primary" :disabled="store.loading" @click="startCollection">
+              {{ store.loading ? '后台采集中...' : '确认并开始找号' }}
+            </button>
+            <p v-if="store.collectionTask">
+              采集任务：{{ store.collectionTask.id }} · {{ store.collectionTask.message }}
+            </p>
           </div>
-        </div>
+        </template>
       </div>
-    </div>
 
-    <!-- 项目管理视图 -->
-    <div v-else-if="currentView === 'project'" class="workbench-shell">
-      <div class="workbench-panel">
-        <div class="view-topbar">
+      <div v-if="store.activeResult" class="result-panel">
+        <div class="panel-heading compact">
           <div>
-            <div class="panel-kicker">Project Management</div>
-            <div class="view-title">项目管理</div>
-            <div class="view-desc">新建 brief 找号，或回看过去项目的推荐名单。</div>
+            <p class="eyebrow">Recommendation Result</p>
+            <h2>推荐结果</h2>
+            <p>{{ store.activeResult.summary }}</p>
           </div>
-          <div class="workbench-top-actions">
-            <button class="ghost-btn" @click="currentView = 'database'">返回媒体库</button>
-            <button class="primary-btn">新建项目</button>
-          </div>
+          <button class="secondary" @click="store.navigate('projects')">返回项目管理</button>
         </div>
 
-        <DsEmpty
-          icon="📋"
-          title="暂无项目"
-          description="点击「新建项目」开始创建"
-        />
+        <h3>严格达标 · {{ store.strictRecommendations.length }} 个</h3>
+        <div v-for="recommendation in store.strictRecommendations" :key="recommendation.id" class="recommend-row">
+          <strong>{{ recommendation.creator.nickname }}</strong>
+          <span>{{ formatFollowers(recommendation.creator.followers) }}</span>
+          <span>图文 {{ formatCurrency(recommendation.creator.imageQuote) }} / 视频 {{ formatCurrency(recommendation.creator.videoQuote) }}</span>
+          <span>{{ recommendation.titleMatchSummary }}</span>
+          <button class="secondary" @click="markSelected(recommendation)">
+            {{ recommendation.creator.selectedByClient ? '客户已选' : '标记客户选中' }}
+          </button>
+        </div>
+
+        <h3>可备选 · {{ store.backupRecommendations.length }} 个</h3>
+        <div v-for="recommendation in store.backupRecommendations" :key="recommendation.id" class="recommend-row backup">
+          <strong>{{ recommendation.creator.nickname }}</strong>
+          <span>{{ formatFollowers(recommendation.creator.followers) }}</span>
+          <span>图文 {{ formatCurrency(recommendation.creator.imageQuote) }} / 视频 {{ formatCurrency(recommendation.creator.videoQuote) }}</span>
+          <span>{{ recommendation.titleMatchSummary }}</span>
+          <button class="secondary" @click="markSelected(recommendation)">
+            {{ recommendation.creator.selectedByClient ? '客户已选' : '标记客户选中' }}
+          </button>
+        </div>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
 .media-page {
-  animation: pageEnter 0.6s ease;
+  padding: 32px;
+  color: #202124;
 }
 
-/* Page Header */
-.page-header {
-  padding: 48px 48px 0;
-  border-bottom: 1px solid var(--ds-color-gray-100);
-  background: var(--ds-color-white);
+.media-header,
+.panel-heading,
+.creator-row,
+.project-row,
+.recommend-row {
+  display: flex;
+  align-items: center;
 }
 
-.page-header-inner {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding-bottom: 24px;
+.media-header,
+.panel-heading {
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
 }
 
-.page-title {
-  font-size: 32px;
+.media-header h1,
+.panel-heading h2 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.2;
+}
+
+.media-header p,
+.panel-heading p,
+.entry-card em,
+.condition-item span,
+.creator-name small,
+.empty-box {
+  color: #777;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #ff7f5f;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: -0.5px;
-  background: linear-gradient(135deg, var(--ds-color-black), var(--ds-color-primary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.page-desc {
-  font-size: 14px;
-  color: var(--ds-color-gray-400);
-  margin-top: 8px;
+.media-nav,
+.provider-row,
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-/* Workbench Shell */
-.workbench-shell {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 48px;
+button,
+select,
+input,
+textarea {
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #202124;
+  font: inherit;
 }
 
-/* Entry Grid */
+button {
+  min-height: 42px;
+  padding: 0 18px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.media-nav button.active,
+.provider-row button.active,
+.primary {
+  border-color: #ff7f5f;
+  background: #ff7f5f;
+  color: #fff;
+}
+
+.secondary {
+  background: #fff;
+}
+
+.wide {
+  width: 100%;
+  margin-top: 14px;
+}
+
 .entry-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
 }
 
 .entry-card {
-  padding: 40px;
-  background: var(--ds-color-white);
-  border: 2px solid var(--ds-color-gray-100);
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.3s;
-  font-family: var(--ds-font-family);
-}
-
-.entry-card:hover {
-  border-color: var(--ds-color-primary);
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-}
-
-.entry-mark {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--ds-color-primary);
-  margin-bottom: 16px;
-}
-
-.entry-title {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-
-.entry-desc {
-  font-size: 14px;
-  color: var(--ds-color-gray-400);
-  line-height: 1.8;
-}
-
-/* Workbench Panel */
-.workbench-panel {
-  background: var(--ds-color-white);
-  border: 1px solid var(--ds-color-gray-100);
+  display: grid;
+  gap: 16px;
+  min-height: 210px;
   padding: 32px;
+  text-align: left;
 }
 
-.view-topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
+.entry-card span {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border: 1px solid #202124;
+  font-weight: 900;
 }
 
-.panel-kicker {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ds-color-gray-400);
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 8px;
+.entry-card strong {
+  font-size: 28px;
 }
 
-.view-title {
-  font-size: 24px;
-  font-weight: 800;
-  margin-bottom: 8px;
+.panel,
+.brief-panel,
+.confirm-panel,
+.result-panel {
+  border: 1px solid #e7e7e7;
+  background: #fff;
+  padding: 24px;
 }
 
-.view-desc {
-  font-size: 14px;
-  color: var(--ds-color-gray-400);
-}
-
-.workbench-top-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.ghost-btn {
-  padding: 10px 20px;
-  background: transparent;
-  border: 1.5px solid var(--ds-color-gray-200);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: var(--ds-font-family);
-}
-
-.ghost-btn:hover {
-  border-color: var(--ds-color-black);
-  transform: translateY(-2px);
-}
-
-.primary-btn {
-  padding: 10px 20px;
-  background: var(--ds-color-primary);
-  color: var(--ds-color-white);
-  border: none;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: var(--ds-font-family);
-}
-
-.primary-btn:hover {
-  background: var(--ds-color-black);
-  transform: translateY(-2px);
-}
-
-/* Filter Bar */
-.filter-bar {
-  padding: 20px 0;
-  border-bottom: 1px solid var(--ds-color-gray-100);
-  margin-bottom: 24px;
-}
-
-.filter-inner {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.compact-select {
-  padding: 10px 32px 10px 16px;
-  border: 1.5px solid var(--ds-color-gray-200);
-  background: var(--ds-color-white);
-  font-size: 13px;
-  font-family: var(--ds-font-family);
-  cursor: pointer;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23808080'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-}
-
-.compact-input {
-  padding: 10px 16px;
-  border: 1.5px solid var(--ds-color-gray-200);
-  background: var(--ds-color-white);
-  font-size: 13px;
-  font-family: var(--ds-font-family);
-  outline: none;
-  width: 200px;
-  transition: all 0.3s ease;
-}
-
-.compact-input:focus {
-  border-color: var(--ds-color-primary);
-  box-shadow: 0 0 0 3px rgba(244, 132, 95, 0.2);
-}
-
-.compact-input::placeholder {
-  color: var(--ds-color-gray-300);
-}
-
-.filter-sep {
-  width: 1px;
-  height: 32px;
-  background: var(--ds-color-gray-200);
-}
-
-.filter-tags {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.filter-chip {
-  padding: 10px 20px;
-  border: 1.5px solid var(--ds-color-gray-200);
-  background: var(--ds-color-white);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: var(--ds-font-family);
-}
-
-.filter-chip:hover {
-  border-color: var(--ds-color-black);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.filter-chip.active {
-  background: var(--ds-color-black);
-  color: var(--ds-color-white);
-  border-color: var(--ds-color-black);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.cart-btn {
-  margin-left: auto;
-  padding: 12px 24px;
-  background: var(--ds-color-primary);
-  color: var(--ds-color-white);
-  border: none;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: var(--ds-font-family);
-  transition: all 0.3s ease;
-}
-
-.cart-btn:hover {
-  background: var(--ds-color-black);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-
-.cart-btn .badge {
-  background: rgba(255, 255, 255, 0.3);
-  padding: 2px 8px;
-  margin-left: 8px;
-  font-size: 12px;
-}
-
-/* Table */
-.table-container {
-  padding: 0;
-}
-
-.table-wrap {
+.project-table,
+.creator-table {
+  border: 1px solid #ececec;
   overflow-x: auto;
 }
 
-table {
+.project-row,
+.creator-row {
+  display: grid;
   width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  min-width: 800px;
-}
-
-thead th {
-  padding: 16px 20px;
+  border: 0;
+  border-bottom: 1px solid #ececec;
   text-align: left;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ds-color-gray-400);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  border-bottom: 2px solid var(--ds-color-black);
 }
 
-tbody td {
-  padding: 20px;
-  border-bottom: 1px solid var(--ds-color-gray-100);
-  vertical-align: middle;
+.project-row {
+  grid-template-columns: 2fr 1fr 1.4fr 1fr 1fr 80px;
+  gap: 16px;
+  padding: 18px;
+  background: #fff;
 }
 
-tbody tr {
-  transition: all 0.2s ease;
+.creator-row {
+  grid-template-columns: 180px 100px 120px 120px 160px 150px 150px 170px 140px 120px;
+  gap: 18px;
+  min-width: 1420px;
+  padding: 18px 20px;
 }
 
-tbody tr:hover {
-  background: var(--ds-color-gray-50);
-  transform: scale(1.01);
-}
-
-.kol-name {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.kol-avatar {
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  background: var(--ds-color-gray-50);
-  border: 1px solid var(--ds-color-gray-100);
-  transition: all 0.3s ease;
-}
-
-.kol-avatar:hover {
-  transform: scale(1.1) rotate(5deg);
-  background: var(--ds-color-primary);
-}
-
-.kol-info .name {
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.follower-num {
+.project-head,
+.creator-head {
+  background: #f7f7f7;
+  color: #777;
   font-weight: 800;
-  font-size: 15px;
+}
+
+.row-link {
+  color: #ff7f5f;
+  font-weight: 800;
+}
+
+.filters {
+  margin-bottom: 18px;
+}
+
+.filters select,
+.filters input {
+  height: 44px;
+  padding: 0 14px;
+}
+
+.creator-name {
+  display: grid;
+  gap: 6px;
+}
+
+.pill,
+.tag,
+.ok,
+.warn,
+.status-badge {
+  display: inline-block;
+  padding: 6px 10px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.pill,
+.tag {
+  background: #f1f1f1;
+}
+
+.ok {
+  background: #eafff3;
+  color: #007a4d;
+}
+
+.warn {
+  background: #fff1e8;
+  color: #c84812;
+}
+
+.status-stack {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.project-detail {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.9fr) minmax(480px, 1.3fr);
+  gap: 20px;
+}
+
+.project-detail textarea {
+  min-height: 220px;
+  padding: 16px;
+  resize: vertical;
+}
+
+.brief-panel,
+.confirm-panel,
+.result-panel {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.result-panel {
+  grid-column: 1 / -1;
+}
+
+.compact {
+  margin-bottom: 0;
+}
+
+.empty-box,
+.summary-box,
+.question-box,
+.revision-box,
+.detail-drawer,
+.collection-box {
+  border: 1px solid #ececec;
+  padding: 18px;
+}
+
+.summary-box p {
+  margin: 10px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.condition-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.condition-item {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #ececec;
+  padding: 14px;
+}
+
+.question-head {
+  display: flex;
+  justify-content: space-between;
+}
+
+.revision-row {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.revision-row textarea {
+  min-height: 86px;
+}
+
+.detail-drawer summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.detail-drawer section {
+  margin-top: 16px;
+}
+
+.detail-drawer h4 {
+  margin: 0 0 8px;
 }
 
 .tag {
-  display: inline-block;
-  padding: 4px 12px;
-  background: var(--ds-color-gray-100);
-  font-size: 11px;
-  font-weight: 600;
-  margin: 2px 4px;
-  transition: all 0.2s ease;
+  margin: 0 6px 6px 0;
 }
 
-.tag:hover {
-  background: var(--ds-color-primary);
-  color: var(--ds-color-white);
-  transform: translateY(-2px);
+.recommend-row {
+  display: grid;
+  grid-template-columns: 1.2fr 120px 240px 1fr 150px;
+  gap: 14px;
+  border-bottom: 1px solid #ececec;
+  padding: 16px 0;
 }
 
-.eng {
-  display: inline-block;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  transition: all 0.2s ease;
+.recommend-row.backup {
+  color: #684000;
 }
 
-.eng:hover {
-  transform: scale(1.05);
-}
-
-.eng.high {
-  background: var(--ds-color-success-bg);
-  color: var(--ds-color-success);
-}
-
-.eng.mid {
-  background: var(--ds-color-warning-bg);
-  color: var(--ds-color-warning);
-}
-
-.eng.low {
-  background: var(--ds-color-error-bg);
-  color: var(--ds-color-error);
-}
-
-.price {
-  font-weight: 800;
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.price small {
-  font-weight: 400;
-  font-size: 11px;
-  color: var(--ds-color-gray-400);
-}
-
-.price:hover {
-  color: var(--ds-color-primary);
-}
-
-.add-btn {
-  padding: 10px 20px;
-  border: 2px solid var(--ds-color-black);
-  background: var(--ds-color-white);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: var(--ds-font-family);
-}
-
-.add-btn:hover {
-  background: var(--ds-color-black);
-  color: var(--ds-color-white);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
-}
-
-.add-btn.added {
-  background: var(--ds-color-black);
-  color: var(--ds-color-white);
-}
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 80px;
-  color: var(--ds-color-gray-300);
-}
-
-.empty-state .icon {
-  font-size: 48px;
+.page-error {
   margin-bottom: 16px;
-  animation: float 3s ease-in-out infinite;
 }
 
-.empty-state h3 {
-  font-size: 16px;
-  font-weight: 400;
-}
-
-.empty-state p {
-  font-size: 14px;
-  margin-top: 8px;
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
+@media (max-width: 960px) {
+  .media-page {
+    padding: 18px;
   }
-  50% {
-    transform: translateY(-10px);
-  }
-}
 
-@keyframes pageEnter {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+  .entry-grid,
+  .project-detail,
+  .condition-grid {
+    grid-template-columns: 1fr;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .project-row,
+  .recommend-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>
