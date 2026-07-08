@@ -17,8 +17,12 @@ export enum ApiErrorCode {
   ValidationError = 422,
   /** 服务器内部错误 */
   ServerError = 500,
+  /** 网关超时 */
+  GatewayTimeout = 504,
   /** 网络异常 */
   NetworkError = 10000,
+  /** 请求超时（前端 axios 超时） */
+  RequestTimeout = 10002,
   /** 未知错误 */
   UnknownError = 10001,
 }
@@ -31,7 +35,9 @@ export const API_ERROR_MESSAGES: Record<ApiErrorCode, string> = {
   [ApiErrorCode.NotFound]: '请求资源不存在',
   [ApiErrorCode.ValidationError]: '请求参数错误',
   [ApiErrorCode.ServerError]: '服务器错误，请稍后重试',
+  [ApiErrorCode.GatewayTimeout]: '请求超时，请稍后重试',
   [ApiErrorCode.NetworkError]: '网络异常，请检查网络连接',
+  [ApiErrorCode.RequestTimeout]: '请求超时，请稍后重试',
   [ApiErrorCode.UnknownError]: '未知错误，请稍后重试',
 }
 

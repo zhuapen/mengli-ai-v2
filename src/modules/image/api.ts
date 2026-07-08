@@ -5,8 +5,12 @@
 import api from '@/core/api'
 import type { ImageGenerateParams, ImageGenerateResult, ImageStyle, ImageHistoryItem } from './types'
 
-/** AI 生成接口超时时间（120秒），图片生成耗时较长 */
-const AI_GENERATION_TIMEOUT = 120_000
+/**
+ * AI 生成接口超时时间（150秒）
+ * 后端 provider timeout 为 120s，前端需预留 30s 余量，
+ * 确保能收到后端 504 响应而非 axios 自身 ECONNABORTED
+ */
+const AI_GENERATION_TIMEOUT = 150_000
 
 export const imageApi = {
   /** 生成图片 */

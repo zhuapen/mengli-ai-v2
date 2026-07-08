@@ -87,7 +87,17 @@ http.interceptors.response.use(
     }
 
     // 统一转换为 ApiError
-    const errorCode = status ?? (error.code === 'ERR_NETWORK' ? ApiErrorCode.NetworkError : ApiErrorCode.UnknownError)
+    // ECONNABORTED = axios 超时，ERR_NETWORK = 网络断开
+    let errorCode: number
+    if (status) {
+      errorCode = status
+    } else if (error.code === 'ECONNABORTED') {
+      errorCode = ApiErrorCode.RequestTimeout
+    } else if (error.code === 'ERR_NETWORK') {
+      errorCode = ApiErrorCode.NetworkError
+    } else {
+      errorCode = ApiErrorCode.UnknownError
+    }
     const apiError: ApiError = {
       code: errorCode,
       message: error.response?.data?.message ?? error.response?.data?.detail ?? getErrorMessage(errorCode),

@@ -9,8 +9,10 @@ describe('ApiErrorCode', () => {
     expect(ApiErrorCode.NotFound).toBe(404)
     expect(ApiErrorCode.ValidationError).toBe(422)
     expect(ApiErrorCode.ServerError).toBe(500)
+    expect(ApiErrorCode.GatewayTimeout).toBe(504)
     expect(ApiErrorCode.NetworkError).toBe(10000)
     expect(ApiErrorCode.UnknownError).toBe(10001)
+    expect(ApiErrorCode.RequestTimeout).toBe(10002)
   })
 })
 
@@ -33,8 +35,10 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(404)).toBe('请求资源不存在')
     expect(getErrorMessage(422)).toBe('请求参数错误')
     expect(getErrorMessage(500)).toBe('服务器错误，请稍后重试')
+    expect(getErrorMessage(504)).toBe('请求超时，请稍后重试')
     expect(getErrorMessage(10000)).toBe('网络异常，请检查网络连接')
     expect(getErrorMessage(10001)).toBe('未知错误，请稍后重试')
+    expect(getErrorMessage(10002)).toBe('请求超时，请稍后重试')
   })
 
   it('未知错误码返回默认文案', () => {
