@@ -102,22 +102,19 @@ export const useMediaStore = defineStore('media', () => {
     setError(null)
     try {
       activeAnalysis.value = await mediaService.analyzeBrief(request)
-      const project: MediaProject = {
-        id: activeProject.value?.id ?? `local-${Date.now()}`,
+      const project = await mediaService.createProject({
+        id: activeProject.value?.id,
         name: `${activeAnalysis.value.brand} 选号项目`,
-        brand: activeAnalysis.value.brand,
-        targetCount: activeAnalysis.value.targetCount,
-        platforms: activeAnalysis.value.platforms,
-        budgetMin: activeAnalysis.value.budgetMin,
-        budgetMax: activeAnalysis.value.budgetMax,
-        status: 'analyzed',
         brief: request.brief,
         analysis: activeAnalysis.value,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
+      })
       activeProject.value = project
-      if (!projects.value.some(item => item.id === project.id)) {
+      activeResult.value = null
+      collectionTask.value = null
+
+      if (projects.value.some(item => item.id === project.id)) {
+        projects.value = projects.value.map(item => (item.id === project.id ? project : item))
+      } else {
         projects.value = [project, ...projects.value]
       }
     } catch (requestError) {
@@ -145,11 +142,8 @@ export const useMediaStore = defineStore('media', () => {
         ...activeProject.value,
         status: 'collecting',
       }
+      projects.value = projects.value.map(project => (project.id === activeProject.value?.id ? activeProject.value : project))
       activeResult.value = await mediaService.getProjectResult(activeProject.value.id)
-      activeProject.value = {
-        ...activeProject.value,
-        status: 'ready',
-      }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : '创建采集任务失败')
     } finally {
@@ -157,11 +151,67 @@ export const useMediaStore = defineStore('media', () => {
     }
   }
 
+  async function refreshCollectionTask() {
+    if (!collectionTask.value) {
+      setError('当前没有采集任务')
+      return
+    }
+
+    loading.value = true
+    setError(null)
+    try {
+      collectionTask.value = await mediaService.getCollectionTask(collectionTask.value.id)
+      if (activeProject.value) {
+        activeResult.value = await mediaService.getProjectResult(activeProject.value.id)
+        if (collectionTask.value.status === 'done') {
+          activeProject.value = {
+            ...activeProject.value,
+            status: 'ready',
+          }
+          await refreshCreators()
+        }
+      }
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : '刷新采集状态失败')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function refreshProjectResult() {
+    if (!activeProject.value) {
+      setError('请先打开项目')
+      return
+    }
+
+    loading.value = true
+    setError(null)
+    try {
+      activeResult.value = await mediaService.getProjectResult(activeProject.value.id)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : '刷新推荐结果失败')
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function openProject(project: MediaProject) {
-    activeProject.value = project
-    activeAnalysis.value = project.analysis ?? null
-    activeResult.value = await mediaService.getProjectResult(project.id)
-    currentView.value = 'project-detail'
+    loading.value = true
+    setError(null)
+    try {
+      activeProject.value = project
+      activeAnalysis.value = project.analysis ?? null
+      collectionTask.value = null
+      activeResult.value = await mediaService.getProjectResult(project.id)
+      currentView.value = 'project-detail'
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : '打开项目失败')
+      activeProject.value = project
+      activeAnalysis.value = project.analysis ?? null
+      currentView.value = 'project-detail'
+    } finally {
+      loading.value = false
+    }
   }
 
   function openLibrary(kind: MediaLibraryKind) {
@@ -214,6 +264,8 @@ export const useMediaStore = defineStore('media', () => {
     refreshCreators,
     analyzeBrief,
     startCollection,
+    refreshCollectionTask,
+    refreshProjectResult,
     openProject,
     openLibrary,
     markClientSelected,

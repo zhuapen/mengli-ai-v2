@@ -4,6 +4,7 @@ import type {
   BriefAnalysis,
   BriefAnalysisRequest,
   CollectionTask,
+  CreateProjectRequest,
   CreatorProfile,
   KOL,
   MediaProject,
@@ -33,12 +34,20 @@ export const mediaApi = {
     return unwrap(await api.get<MediaProject[] | ApiResponse<MediaProject[]>>('/media/projects'))
   },
 
+  async createProject(request: CreateProjectRequest) {
+    return unwrap(await api.post<MediaProject | ApiResponse<MediaProject>>('/media/projects', request))
+  },
+
   async analyzeBrief(request: BriefAnalysisRequest) {
     return unwrap(await api.post<BriefAnalysis | ApiResponse<BriefAnalysis>>('/media/brief-intelligence', request))
   },
 
   async startCollection(request: StartCollectionRequest) {
     return unwrap(await api.post<CollectionTask | ApiResponse<CollectionTask>>('/media/collection-tasks', request))
+  },
+
+  async getCollectionTask(taskId: string) {
+    return unwrap(await api.get<CollectionTask | ApiResponse<CollectionTask>>(`/media/collection-tasks/${taskId}`))
   },
 
   async getProjectResult(projectId: string) {

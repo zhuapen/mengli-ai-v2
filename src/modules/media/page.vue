@@ -105,6 +105,19 @@ function formatMetricStatus(creator: CreatorProfile): string {
   return creator.metricError ?? '指标采集失败'
 }
 
+function formatTaskStatus(status?: string): string {
+  if (!status) return '未创建'
+  const map: Record<string, string> = {
+    queued: '等待采集器',
+    running: '采集中',
+    login_required: '蒲公英待登录',
+    done: '已完成',
+    error: '失败',
+    idle: '未开始',
+  }
+  return map[status] ?? status
+}
+
 function updateKeyword(event: Event) {
   store.updateFilters({ keyword: (event.target as HTMLInputElement).value })
 }
@@ -384,11 +397,22 @@ function markSelected(recommendation: Recommendation) {
 
           <div class="collection-box">
             <button class="primary" :disabled="store.loading" @click="startCollection">
-              {{ store.loading ? '后台采集中...' : '确认并开始找号' }}
+              {{ store.loading ? '提交中...' : '确认并开始找号' }}
             </button>
-            <p v-if="store.collectionTask">
-              采集任务：{{ store.collectionTask.id }} · {{ store.collectionTask.message }}
-            </p>
+            <button v-if="store.collectionTask" class="secondary" :disabled="store.loading" @click="store.refreshCollectionTask">
+              刷新采集状态
+            </button>
+            <button v-if="store.activeProject" class="secondary" :disabled="store.loading" @click="store.refreshProjectResult">
+              刷新推荐结果
+            </button>
+            <div v-if="store.collectionTask" class="task-status">
+              <b>采集任务：{{ store.collectionTask.id }}</b>
+              <span :class="['task-badge', store.collectionTask.status]">{{ formatTaskStatus(store.collectionTask.status) }}</span>
+              <p>{{ store.collectionTask.message }}</p>
+              <small>
+                目标 {{ store.collectionTask.targetCount }} 个，已回传 {{ store.collectionTask.candidateCount }} 个候选。若一直停在“等待采集器”，说明固定 worker 还没有启动或没有连上服务器。
+              </small>
+            </div>
           </div>
         </template>
       </div>
@@ -684,6 +708,54 @@ button:disabled {
 .collection-box {
   border: 1px solid #ececec;
   padding: 18px;
+}
+
+.collection-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.task-status {
+  display: grid;
+  flex-basis: 100%;
+  gap: 8px;
+  margin-top: 4px;
+  border: 1px solid #ececec;
+  background: #fafafa;
+  padding: 14px;
+}
+
+.task-status p,
+.task-status small {
+  margin: 0;
+  color: #666;
+}
+
+.task-badge {
+  width: fit-content;
+  padding: 4px 10px;
+  background: #f1f1f1;
+  color: #555;
+  font-weight: 800;
+}
+
+.task-badge.queued,
+.task-badge.running {
+  background: #fff1e8;
+  color: #c84812;
+}
+
+.task-badge.done {
+  background: #eafff3;
+  color: #007a4d;
+}
+
+.task-badge.error,
+.task-badge.login_required {
+  background: #fff0f0;
+  color: #c62828;
 }
 
 .summary-box p {
