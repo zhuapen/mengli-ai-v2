@@ -3,6 +3,7 @@ import type {
   BriefAnalysis,
   BriefAnalysisRequest,
   CollectionTask,
+  CreateProjectRequest,
   CreatorProfile,
   KOL,
   MediaProject,
@@ -209,6 +210,7 @@ const projects: MediaProject[] = [
 const createResponse = <T>(data: T): ApiResponse<T> => ({
   code: 0,
   message: 'ok',
+  success: true,
   data,
 })
 
@@ -257,6 +259,27 @@ export const mediaMockApi = {
   async getProjects() {
     await delay()
     return createResponse(projects)
+  },
+
+  async createProject(request: CreateProjectRequest) {
+    await delay()
+    const project: MediaProject = {
+      id: request.id ?? `mock-project-${Date.now()}`,
+      name: request.name ?? `${request.analysis?.brand ?? request.brand ?? '新项目'} 选号项目`,
+      brand: request.brand ?? request.analysis?.brand ?? '未写明',
+      targetCount: request.targetCount ?? request.analysis?.targetCount ?? 10,
+      platforms: request.platforms ?? request.analysis?.platforms ?? ['小红书蒲公英'],
+      budgetMin: request.budgetMin ?? request.analysis?.budgetMin,
+      budgetMax: request.budgetMax ?? request.analysis?.budgetMax,
+      status: request.status ?? 'analyzed',
+      brief: request.brief,
+      analysis: request.analysis,
+      createdAt: request.createdAt ?? new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    projects.unshift(project)
+    return createResponse(project)
   },
 
   async analyzeBrief(request: BriefAnalysisRequest) {
@@ -337,6 +360,22 @@ export const mediaMockApi = {
       collectedCount: 0,
       candidateCount: 0,
       message: '后台采集器已接收任务，将先重置蒲公英筛选，再按策略采集候选。',
+      updatedAt: now,
+    }
+
+    return createResponse(task)
+  },
+
+  async getCollectionTask(taskId: string) {
+    await delay()
+    const task: CollectionTask = {
+      id: taskId,
+      projectId: 'mock-project',
+      status: 'queued',
+      targetCount: 10,
+      collectedCount: 0,
+      candidateCount: 0,
+      message: 'Mock 采集任务等待中。',
       updatedAt: now,
     }
 

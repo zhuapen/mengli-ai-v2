@@ -44,6 +44,7 @@ export interface MediaSearchParams {
 export interface ApiResponse<T> {
   code: number
   message: string
+  success: boolean
   data: T
 }
 
@@ -164,6 +165,20 @@ export interface MediaProject {
   analysis?: BriefAnalysis
   createdAt: string
   updatedAt: string
+}
+
+export interface CreateProjectRequest {
+  id?: string
+  name?: string
+  brand?: string
+  targetCount?: number
+  platforms?: MediaPlatform[]
+  budgetMin?: number
+  budgetMax?: number
+  status?: ProjectStatus
+  brief: string
+  analysis?: BriefAnalysis
+  createdAt?: string
 }
 
 export interface RecommendationRequirementHit {

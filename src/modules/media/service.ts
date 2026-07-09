@@ -6,6 +6,7 @@ import type {
   BriefAnalysis,
   BriefAnalysisRequest,
   CollectionTask,
+  CreateProjectRequest,
   CreatorProfile,
   KOL,
   MediaProject,
@@ -95,7 +96,14 @@ const normalizeAnalysis = (analysis: BriefAnalysis, brief: string): BriefAnalysi
 }
 
 const handleError = (scope: string, fallback: string, error: unknown) => {
-  const message = error instanceof Error ? error.message : fallback
+  const rawMessage = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message?: unknown }).message)
+      : fallback
+  const message = rawMessage.includes('Network') || rawMessage.includes('网络') || rawMessage.includes('404') || rawMessage.includes('endpoint')
+    ? `媒体后端未接入或未启动，请确认服务器已部署 /api/media 服务并完成 Nginx 转发。原始错误：${rawMessage}`
+    : rawMessage
   logger.error(`[MediaService] ${scope} failed`, message)
   throw new Error(message)
 }
@@ -139,6 +147,18 @@ export const mediaService = {
     }
   },
 
+  async createProject(request: CreateProjectRequest): Promise<MediaProject> {
+    try {
+      if (useMock()) {
+        return readResponseData(await mediaMockApi.createProject(request))
+      }
+
+      return await mediaApi.createProject(request)
+    } catch (error) {
+      return handleError('createProject', '保存项目失败', error)
+    }
+  },
+
   async analyzeBrief(request: BriefAnalysisRequest): Promise<BriefAnalysis> {
     try {
       const analysis = useMock()
@@ -160,6 +180,18 @@ export const mediaService = {
       return await mediaApi.startCollection(request)
     } catch (error) {
       return handleError('startCollection', '创建采集任务失败', error)
+    }
+  },
+
+  async getCollectionTask(taskId: string): Promise<CollectionTask> {
+    try {
+      if (useMock()) {
+        return readResponseData(await mediaMockApi.getCollectionTask(taskId))
+      }
+
+      return await mediaApi.getCollectionTask(taskId)
+    } catch (error) {
+      return handleError('getCollectionTask', '获取采集任务状态失败', error)
     }
   },
 
