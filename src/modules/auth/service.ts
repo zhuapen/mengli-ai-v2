@@ -7,7 +7,6 @@ import { isFeatureEnabled } from '@/core/config/feature'
 import { logger } from '@/core/logger'
 import { setTokens, clearTokens, getAccessToken } from '@/core/auth/token'
 import { authApi } from './api'
-import { authMockApi } from './mock'
 import type {
   LoginParams,
   LoginResult,
@@ -19,6 +18,12 @@ import type {
 
 function useMock(): boolean {
   return isFeatureEnabled('enableMock')
+}
+
+async function getMockApi() {
+  if (import.meta.env.PROD) return null
+  const { authMockApi } = await import('./mock')
+  return authMockApi
 }
 
 /** 后端用户转换为前端用户 */
@@ -43,7 +48,7 @@ export const authService = {
     logger.info('[AuthService] login', { email: params.email })
 
     const res = useMock()
-      ? await authMockApi.login(params)
+      ? await (await getMockApi()).login(params)
       : await authApi.login(params)
 
     // 后端返回 { token, user }
@@ -67,7 +72,7 @@ export const authService = {
     logger.info('[AuthService] register', { email: params.email })
 
     const res = useMock()
-      ? await authMockApi.register(params)
+      ? await (await getMockApi()).register(params)
       : await authApi.register(params)
 
     logger.info('[AuthService] register success')
@@ -87,7 +92,7 @@ export const authService = {
 
     try {
       if (useMock()) {
-        await authMockApi.logout()
+        await (await getMockApi()).logout()
       } else {
         await authApi.logout()
       }
@@ -108,7 +113,7 @@ export const authService = {
 
     try {
       const user = useMock()
-        ? await authMockApi.getCurrentUser()
+        ? await (await getMockApi()).getCurrentUser()
         : await authApi.getCurrentUser()
 
       return normalizeUser(user)

@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/core/stores/user'
+import { validateCompanyEmail } from './email'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -10,14 +11,29 @@ const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const error = ref('')
+const emailError = ref('')
 const successMessage = ref('')
+
+function onEmailBlur() {
+  if (email.value.trim()) {
+    const result = validateCompanyEmail(email.value)
+    emailError.value = result.valid ? '' : (result.error ?? '')
+  }
+}
 
 async function handleRegister() {
   error.value = ''
   successMessage.value = ''
+  emailError.value = ''
 
-  if (!email.value || !password.value) {
-    error.value = '请填写邮箱和密码'
+  const emailResult = validateCompanyEmail(email.value)
+  if (!emailResult.valid) {
+    emailError.value = emailResult.error ?? ''
+    return
+  }
+
+  if (!password.value) {
+    error.value = '请填写密码'
     return
   }
 
@@ -33,7 +49,7 @@ async function handleRegister() {
 
   try {
     const message = await userStore.register({
-      email: email.value,
+      email: email.value.trim(),
       password: password.value,
     })
     successMessage.value = message || '注册成功，等待管理员审批'
@@ -74,13 +90,16 @@ function closeModal() {
         <div v-if="error" class="error-message">{{ error }}</div>
 
         <div class="form-group">
-          <label>邮箱</label>
+          <label>企业微信邮箱</label>
           <input
             v-model="email"
             type="email"
             data-testid="register-email"
-            placeholder="请输入邮箱"
+            placeholder="请输入企业微信邮箱"
+            @blur="onEmailBlur"
           />
+          <p v-if="emailError" class="field-error" data-testid="email-error">{{ emailError }}</p>
+          <p class="field-hint">仅支持 @menglihudong.com 企业邮箱</p>
         </div>
 
         <div class="form-group">
@@ -200,6 +219,18 @@ function closeModal() {
 }
 
 .form-group input::placeholder {
+  color: #9ca3af;
+}
+
+.field-error {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #ef4444;
+}
+
+.field-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
   color: #9ca3af;
 }
 
