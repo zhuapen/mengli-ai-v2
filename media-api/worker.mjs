@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
+import { createServer } from 'node:http'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -66,22 +67,141 @@ async function updateTask(taskId, status, message, extra = {}) {
   return task
 }
 
-function runLegacyRunner(taskId, runnerPath) {
+function readBody(request) {
+  return new Promise((resolveBody, rejectBody) => {
+    let body = ''
+    request.on('data', chunk => {
+      body += chunk
+    })
+    request.on('end', () => {
+      try {
+        resolveBody(body ? JSON.parse(body) : {})
+      } catch {
+        rejectBody(new Error('请求 JSON 格式错误'))
+      }
+    })
+  })
+}
+
+function send(response, status, payload) {
+  response.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+  })
+  response.end(JSON.stringify(payload))
+}
+
+function legacyPayload(task) {
+  const project = task.project || {}
+  const analysis = project.analysis || {}
+  return {
+    task: {
+      id: task.id,
+      projectId: task.projectId,
+      targetCount: task.targetCount,
+      type: 'pgy_find',
+      payload: {
+        brief: project.brief || '',
+        brand: project.brand || analysis.brand || '',
+        analysis,
+        collector: {
+          keywords: analysis.searchKeywords || [],
+          productSearchKeywords: analysis.productKeywords || [],
+          pgyFilterPlan: analysis.pgyFilterPlan || null,
+        },
+      },
+    },
+  }
+}
+
+function startLegacyAdapter(task) {
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url || '/', 'http://127.0.0.1')
+    try {
+      if (request.method === 'GET' && url.pathname === '/api/health') {
+        send(response, 200, { ok: true })
+        return
+      }
+
+      const taskMatch = url.pathname.match(/^\/api\/codex-tasks\/([^/]+)$/)
+      if (request.method === 'GET' && taskMatch) {
+        send(response, 200, legacyPayload(task))
+        return
+      }
+
+      const statusMatch = url.pathname.match(/^\/api\/codex-tasks\/([^/]+)\/status$/)
+      if (request.method === 'POST' && statusMatch) {
+        const body = await readBody(request)
+        const updated = await api(`/collector/tasks/${encodeURIComponent(statusMatch[1])}/status`, {
+          method: 'POST',
+          body: JSON.stringify({
+            status: body.status,
+            message: body.message,
+            collectedCount: body.collected_count,
+            candidateCount: body.result?.collected ?? body.collected_count,
+          }),
+        })
+        send(response, 200, { ok: true, task: updated })
+        return
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/collector/ingest') {
+        const body = await readBody(request)
+        const result = await api('/collector/ingest', {
+          method: 'POST',
+          body: JSON.stringify({
+            ...body,
+            taskId: task.id,
+            projectId: task.projectId,
+          }),
+        })
+        send(response, 200, result)
+        return
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/library-refresh/ingest') {
+        send(response, 200, { updated: 0, failed: 0 })
+        return
+      }
+
+      send(response, 404, { error: 'adapter endpoint not found' })
+    } catch (error) {
+      send(response, 500, { error: error instanceof Error ? error.message : String(error) })
+    }
+  })
+
+  return new Promise(resolveListen => {
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address()
+      const port = typeof address === 'object' && address ? address.port : 0
+      resolveListen({
+        url: `http://127.0.0.1:${port}`,
+        close: () => new Promise(resolveClose => server.close(resolveClose)),
+      })
+    })
+  })
+}
+
+async function runLegacyRunner(task, runnerPath) {
+  const adapter = await startLegacyAdapter(task)
   return new Promise(resolveRun => {
     console.log(`[worker] 调用蒲公英采集脚本：${runnerPath}`)
-    const child = spawn(process.execPath, [runnerPath, taskId], {
+    console.log(`[worker] 旧脚本本地兼容接口：${adapter.url}`)
+    const child = spawn(process.execPath, [runnerPath, task.id], {
       cwd: dirname(dirname(runnerPath)),
       env: {
         ...process.env,
-        MENGLI_SERVER: SERVER_ROOT,
+        MENGLI_SERVER: adapter.url,
         MENGLI_PGY_SINGLE_TAB: process.env.MENGLI_PGY_SINGLE_TAB || '1',
       },
       stdio: 'inherit',
     })
-    child.on('exit', code => resolveRun(code || 0))
+    child.on('exit', async code => {
+      await adapter.close()
+      resolveRun(code || 0)
+    })
     child.on('error', error => {
       console.error(`[worker] 启动旧采集脚本失败：${error.message}`)
-      resolveRun(1)
+      void adapter.close().then(() => resolveRun(1))
     })
   })
 }
@@ -170,7 +290,7 @@ async function runTask(task) {
   const runnerPath = resolveLegacyRunner()
   if (runnerPath) {
     await updateTask(task.id, 'running', '固定 worker 已接收任务，开始调用蒲公英采集脚本。')
-    const code = await runLegacyRunner(task.id, runnerPath)
+    const code = await runLegacyRunner(task, runnerPath)
     if (code !== 0) {
       await updateTask(task.id, 'error', `蒲公英采集脚本退出码 ${code}。请查看 worker 终端日志。`)
     }
