@@ -624,6 +624,55 @@ function listCreators(params) {
   })
 }
 
+function queryList(params, name) {
+  return unique(
+    [...params.getAll(name), ...params.getAll(`${name}[]`)]
+      .flatMap(value => value.split(',')),
+  )
+}
+
+function queryNumber(params, name) {
+  const value = params.get(name)
+  if (value === null || value.trim() === '') return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function listKols(params) {
+  const requestedTags = queryList(params, 'tags')
+  const minFollowers = queryNumber(params, 'minFollowers')
+  const maxFollowers = queryNumber(params, 'maxFollowers')
+  const minQuote = queryNumber(params, 'minQuote')
+  const maxQuote = queryNumber(params, 'maxQuote')
+  const minRebate = queryNumber(params, 'minRebate')
+  const maxRebate = queryNumber(params, 'maxRebate')
+
+  return listCreators(params)
+    .filter(creator => {
+      const creatorTags = [...creator.tags, ...creator.audienceTags]
+      const quote = creator.videoQuote ?? creator.imageQuote ?? 0
+      const rebate = creator.rebatePercent ?? 0
+      if (requestedTags.length > 0 && !requestedTags.some(tag => creatorTags.includes(tag))) return false
+      if (minFollowers !== undefined && creator.followers < minFollowers) return false
+      if (maxFollowers !== undefined && creator.followers > maxFollowers) return false
+      if (minQuote !== undefined && quote < minQuote) return false
+      if (maxQuote !== undefined && quote > maxQuote) return false
+      if (minRebate !== undefined && rebate < minRebate) return false
+      if (maxRebate !== undefined && rebate > maxRebate) return false
+      return true
+    })
+    .map(creator => ({
+      id: creator.id,
+      name: creator.nickname,
+      platform: creator.platform,
+      avatar: creator.nickname.slice(0, 1),
+      followers: creator.followers,
+      engagement: creator.metrics.interactionMedian ?? 0,
+      tags: [...creator.tags, ...creator.audienceTags],
+      price: creator.videoQuote ?? creator.imageQuote ?? 0,
+    }))
+}
+
 function normalizeCreator(input, projectName) {
   const metrics = input.metrics || {
     exposureMedian: numberValue(input.exposureMedian ?? input.exposure_median),
@@ -1018,6 +1067,18 @@ async function route(request, response) {
 
     if (request.method === 'GET' && path === '/api/media/creators') {
       send(response, 200, ok(listCreators(url.searchParams)))
+      return
+    }
+
+    if (request.method === 'GET' && path === '/api/media/kols') {
+      try {
+        send(response, 200, ok(listKols(url.searchParams)))
+      } catch (error) {
+        console.error('[media-api] kol_search_failed', {
+          exceptionType: error instanceof Error ? error.constructor.name : 'UnknownError',
+        })
+        send(response, 500, fail('达人搜索暂时不可用', 500))
+      }
       return
     }
 
