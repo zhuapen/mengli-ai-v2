@@ -83,9 +83,6 @@ function closeModal() {
         <a class="login-link" @click="goRegister">立即注册</a>
       </div>
 
-      <div class="login-hint">
-        <p>测试账号：admin@mengli.ai / 123456</p>
-      </div>
     </div>
   </div>
 </template>
@@ -218,20 +215,6 @@ function closeModal() {
 
 .login-link:hover {
   text-decoration: underline;
-}
-
-.login-hint {
-  margin-top: 16px;
-  padding: 12px;
-  background: #f9fafb;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.login-hint p {
-  margin: 0;
-  font-size: 12px;
-  color: #9ca3af;
 }
 
 @keyframes fadeIn {
